@@ -10,11 +10,33 @@ interface RenderedTarget {
 }
 
 const degreesToRadians = (value: number): number => (value * Math.PI) / 180;
+const radiansToDegrees = (value: number): number => (value * 180) / Math.PI;
+const cameraHeight = 1.65;
+const floorClearance = 0.2;
 
 // Training targets use positive yaw for the right side of the arena, while
 // Three.js rotates a camera with positive yaw toward the left.
 export const toSceneCameraYaw = (logicalYaw: number): number => -logicalYaw;
 const toLogicalYaw = (sceneYaw: number): number => -sceneYaw;
+
+const getTargetDistance = (target: TrainingTarget): number =>
+  target.distance ?? (target.hitRegions ? 16 : 25);
+
+const getTargetBottomOffset = (target: TrainingTarget, distance: number): number => {
+  const size = angularSizeToWorldSize(distance, target.angularSize);
+  return target.hitRegions ? size * 1.25 : size / 2;
+};
+
+export const constrainTargetToFloor = (target: TrainingTarget): TrainingTarget => {
+  const distance = getTargetDistance(target);
+  const minimumCenterHeight = floorClearance + getTargetBottomOffset(target, distance);
+  const minimumPitch = radiansToDegrees(
+    Math.asin(
+      THREE.MathUtils.clamp((minimumCenterHeight - cameraHeight) / distance, -1, 1),
+    ),
+  );
+  return { ...target, pitch: Math.max(target.pitch, minimumPitch) };
+};
 
 export class AimArenaScene {
   readonly scene = new THREE.Scene();
@@ -27,7 +49,7 @@ export class AimArenaScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x0c0e10);
     this.container.replaceChildren(this.renderer.domElement);
-    this.camera.position.set(0, 1.65, 0);
+    this.camera.position.set(0, cameraHeight, 0);
     this.camera.rotation.order = "YXZ";
     this.buildArena();
     this.resize();
@@ -38,6 +60,7 @@ export class AimArenaScene {
   }
 
   addTarget(target: TrainingTarget): void {
+    Object.assign(target, constrainTargetToFloor(target));
     const root = target.hitRegions ? this.createRobotTarget(target) : this.createCircularTarget(target);
     const hitObjects: THREE.Object3D[] = [];
     root.traverse((object) => {
@@ -54,6 +77,7 @@ export class AimArenaScene {
     if (!rendered) {
       return;
     }
+    Object.assign(target, constrainTargetToFloor(target));
     rendered.target = target;
     this.positionTarget(rendered.root, target);
     rendered.root.traverse((object) => {
@@ -161,7 +185,7 @@ export class AimArenaScene {
 
   private createCircularTarget(target: TrainingTarget): THREE.Group {
     const group = new THREE.Group();
-    const distance = target.distance ?? 25;
+    const distance = getTargetDistance(target);
     const diameter = angularSizeToWorldSize(distance, target.angularSize);
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(diameter / 2, 20, 16),
@@ -180,7 +204,7 @@ export class AimArenaScene {
 
   private createRobotTarget(target: TrainingTarget): THREE.Group {
     const group = new THREE.Group();
-    const distance = target.distance ?? 16;
+    const distance = getTargetDistance(target);
     const size = angularSizeToWorldSize(distance, target.angularSize);
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x68737a, roughness: 0.62, metalness: 0.38 });
     const headMaterial = new THREE.MeshStandardMaterial({ color: 0x9daab0, emissive: 0x267a75, emissiveIntensity: 0.45 });
@@ -200,12 +224,12 @@ export class AimArenaScene {
   }
 
   private positionTarget(object: THREE.Object3D, target: TrainingTarget): void {
-    const distance = target.distance ?? 25;
+    const distance = getTargetDistance(target);
     const yaw = degreesToRadians(target.yaw);
     const pitch = degreesToRadians(target.pitch);
     object.position.set(
       Math.sin(yaw) * Math.cos(pitch) * distance,
-      1.65 + Math.sin(pitch) * distance,
+      cameraHeight + Math.sin(pitch) * distance,
       -Math.cos(yaw) * Math.cos(pitch) * distance,
     );
   }
