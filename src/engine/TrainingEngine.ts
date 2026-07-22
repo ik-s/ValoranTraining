@@ -193,6 +193,7 @@ export class TrainingEngine {
         const error = this.scene.getAngularErrorToTarget(target);
         this.mode.recordTrackingFrame({
           timestamp: now,
+          deltaTimeSeconds,
           angularError: error,
           isInsideTarget: error <= target.angularSize / 2,
           targetSpeed: this.mode.getSpeed(),

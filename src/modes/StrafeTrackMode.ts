@@ -8,11 +8,14 @@ import type {
 
 export interface TrackingFrame {
   timestamp: number;
+  deltaTimeSeconds: number;
   angularError: number;
   isInsideTarget: boolean;
   targetSpeed: number;
   targetDirection: "left" | "right";
 }
+
+const TRACKING_SCORE_TICKS_PER_SECOND = 60;
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
@@ -104,7 +107,8 @@ export class StrafeTrackMode implements TrainingMode {
     const speedWeight = speed
       ? 1 + ((frame.targetSpeed - speed.minimum) / (speed.maximum - speed.minimum || 1)) * 0.2
       : 1;
-    this.score += precision * speedWeight;
+    this.score +=
+      precision * speedWeight * frame.deltaTimeSeconds * TRACKING_SCORE_TICKS_PER_SECOND;
     if (frame.isInsideTarget) {
       this.insideCount += 1;
       if (this.continuousTrackingStartedAt === null) {
