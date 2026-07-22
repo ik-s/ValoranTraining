@@ -12,7 +12,8 @@ export const createSensitivityForm = (
   const form = document.createElement("form");
   form.className = "settings-form";
   form.innerHTML = [
-    '<label>MOUSE DPI<input name="dpi" type="number" min="100" max="20000" step="1" required /></label>',
+    '<label>ACTUAL MOUSE DPI<input name="dpi" type="number" min="100" max="20000" step="1" required /></label>',
+    '<p class="dpi-notice"><strong>현재 마우스 소프트웨어에 설정된 실제 DPI를 입력하세요.</strong> 이 숫자를 바꿔도 브라우저나 마우스 DPI는 바뀌지 않습니다. eDPI와 VALORANT 360° 거리 계산에만 사용됩니다.</p>',
     '<label>VALORANT SENSITIVITY<input name="valorantSensitivity" type="number" min="0.001" max="10" step="0.0001" required /></label>',
     '<div class="edpi-readout"><span>eDPI</span><output data-edpi></output></div>',
     '<div class="sensitivity-reference"><span>VALORANT 360° 거리</span><output data-cm-per-360></output><small>원시 마우스 입력에서의 예상 마우스패드 이동 거리</small></div>',

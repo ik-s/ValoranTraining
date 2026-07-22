@@ -34,4 +34,12 @@ describe("createSensitivityForm", () => {
 
     expect(distance?.value).toBe("51.0 cm");
   });
+
+  it("explains that the DPI field does not change the hardware DPI", () => {
+    const form = createSensitivityForm(null, () => undefined);
+
+    expect(form.textContent).toContain(
+      "이 숫자를 바꿔도 브라우저나 마우스 DPI는 바뀌지 않습니다",
+    );
+  });
 });

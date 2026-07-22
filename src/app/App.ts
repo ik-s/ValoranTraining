@@ -115,6 +115,9 @@ const resultMetricMeta: Record<string, ResultMetricMeta> = {
   bodyHits: { label: "BODY HITS", korean: "몸통 명중", format: "count" },
 };
 
+const hasGenericShotMetrics = (result: AimTrainingResult): boolean =>
+  result.modeId !== "strafe-track" && result.modeId !== "headshot-only";
+
 const formatResultMetric = (value: number, format: ResultMetricFormat): string => {
   switch (format) {
     case "ratio":
@@ -454,7 +457,7 @@ export class App {
     return (
       '<section class="panel settings-panel">' +
       this.renderPanelHeading("STEP 01 / 03", "감도 설정") +
-      '<p><strong>VALORANT 프로필</strong>이 적용됩니다. 브라우저는 마우스 DPI를 자동으로 알 수 없으니 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 훈련은 VALORANT 회전 계수와 시야각을 사용하며, 원시 마우스 입력이 지원되는 환경에서 1:1 회전을 기대할 수 있습니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
+      '<p><strong>VALORANT 프로필</strong>이 적용됩니다. 브라우저는 마우스 DPI를 자동으로 알 수 없으니, 마우스 소프트웨어에 설정된 실제 DPI와 VALORANT 인게임 감도를 입력해주세요. DPI 입력값은 eDPI·360° 거리 계산용이며 하드웨어 DPI를 변경하지 않습니다. 훈련은 VALORANT 회전 계수와 시야각을 사용하며, 원시 마우스 입력이 지원되는 환경에서 1:1 회전을 기대할 수 있습니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
     );
   }
 
@@ -608,6 +611,15 @@ export class App {
       result.inputSnapshot.pointerLockMode === "raw"
         ? "원시 마우스 입력"
         : "표준 마우스 입력";
+    const genericShotMetrics = hasGenericShotMetrics(result)
+      ? '<div class="stat-grid stat-grid--three"><div><span>HITS<small>명중</small></span><strong>' +
+        result.hits +
+        '</strong></div><div><span>ACCURACY<small>명중률</small></span><strong>' +
+        (result.accuracy === null ? "—" : Math.round(result.accuracy * 100) + "%") +
+        '</strong></div><div><span>MAX COMBO<small>최고 연속 명중</small></span><strong>' +
+        result.maxCombo +
+        "</strong></div></div>"
+      : "";
     return (
       '<section class="panel result-panel">' +
       this.renderPanelHeading(
@@ -631,13 +643,9 @@ export class App {
       result.inputSnapshot.pointerLockMode.toUpperCase() +
       "<small>" +
       inputName +
-      '</small></span></div></div><div class="stat-grid stat-grid--three"><div><span>HITS<small>명중</small></span><strong>' +
-      result.hits +
-      '</strong></div><div><span>ACCURACY<small>명중률</small></span><strong>' +
-      (result.accuracy === null ? "—" : Math.round(result.accuracy * 100) + "%") +
-      '</strong></div><div><span>MAX COMBO<small>최고 연속 명중</small></span><strong>' +
-      result.maxCombo +
-      '</strong></div></div><div class="metric-grid">' +
+      '</small></span></div></div>' +
+      genericShotMetrics +
+      '<div class="metric-grid">' +
       metrics +
       '</div><div class="button-row"><button class="primary-button" data-action="retry">같은 설정으로 재도전</button><button class="secondary-button" data-screen="training-select">훈련 선택</button><button class="text-button" data-screen="records">기록 보기</button></div></section>'
     );

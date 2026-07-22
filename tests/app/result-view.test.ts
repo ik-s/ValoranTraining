@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { App } from "../../src/app/App";
-import type { GridShotResult } from "../../src/domain/Results";
+import type {
+  GridShotResult,
+  HeadshotOnlyResult,
+  StrafeTrackResult,
+} from "../../src/domain/Results";
 
 const result: GridShotResult = {
   id: "result-1",
@@ -63,5 +67,52 @@ describe("result view", () => {
     harness.currentResult = { ...result, durationSeconds: 30 };
 
     expect(harness.renderResult()).toContain("30초 훈련 완료");
+  });
+
+  it("shows only mode-specific metrics when a mode does not record generic shots", () => {
+    const app = new App(document.createElement("div"));
+    const harness = app as unknown as {
+      currentResult: StrafeTrackResult | HeadshotOnlyResult;
+      renderResult: () => string;
+    };
+    const trackingResult: StrafeTrackResult = {
+      ...result,
+      modeId: "strafe-track",
+      accuracy: null,
+      hits: 0,
+      misses: 0,
+      maxCombo: 0,
+      modeMetrics: {
+        trackingAccuracy: 0.27,
+        insideRatio: 0.24,
+        averageAngularError: 3,
+        longestContinuousTracking: 0.83,
+      },
+    };
+    const headshotResult: HeadshotOnlyResult = {
+      ...result,
+      modeId: "headshot-only",
+      hits: 0,
+      maxCombo: 18,
+      modeMetrics: {
+        headHits: 31,
+        headshotRatio: 0.78,
+        bodyHits: 9,
+        timeouts: 2,
+      },
+    };
+
+    for (const trainingResult of [trackingResult, headshotResult]) {
+      harness.currentResult = trainingResult;
+      const markup = harness.renderResult();
+
+      expect(markup).not.toContain("HITS<small>명중</small>");
+      expect(markup).not.toContain("ACCURACY<small>명중률</small>");
+      expect(markup).not.toContain("MAX COMBO<small>최고 연속 명중</small>");
+    }
+    harness.currentResult = trackingResult;
+    expect(harness.renderResult()).toContain("추적 정확도");
+    harness.currentResult = headshotResult;
+    expect(harness.renderResult()).toContain("헤드샷 명중");
   });
 });
