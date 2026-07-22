@@ -1,7 +1,10 @@
 .training-crosshair {
-  position: fixed;
+  position: absolute;
+  z-index: 3;
   inset: 50% auto auto 50%;
   pointer-events: none;
+}
+.training-crosshair .crosshair-reticle {
   translate: -50% -50%;
 }
 

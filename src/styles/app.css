@@ -70,6 +70,7 @@
 .secondary-button:hover, .difficulty-button:hover, .difficulty-button.is-selected { border-color: var(--cyan); color: var(--cyan); }
 .text-button { padding-inline: 0; color: var(--cyan); background: transparent; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); }
+.stat-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stat-grid > div, .metric-grid > div { padding: 20px; background: var(--surface); }
 .stat-grid span, .metric-grid span, .record-row span, .hud-score small { display: block; color: var(--text-muted); font-size: 0.69rem; font-weight: 800; letter-spacing: 0.12em; }
 .stat-grid strong { display: block; margin-top: 8px; font-size: 1.7rem; }
@@ -100,21 +101,23 @@
 .edpi-readout { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 12px 0; color: var(--cyan); }
 .edpi-readout output { font-size: 2rem; font-weight: 900; }
 .form-message { min-height: 1.5em; margin: 0; color: #ff9c64; }
-.calibration-panel { max-width: 760px; margin-inline: auto; }
-.calibration-panel > p:not(.eyebrow) { color: var(--text-muted); line-height: 1.7; }
-.calibration-value, .result-score { display: block; margin-top: 25px; color: var(--cyan); font-size: clamp(3.4rem, 12vw, 7rem); font-weight: 900; line-height: 1; }
+.result-score { display: block; margin-top: 25px; color: var(--cyan); font-size: clamp(3.4rem, 12vw, 7rem); font-weight: 900; line-height: 1; }
 .crosshair-layout { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1.2fr); gap: 36px; align-items: center; }
-.crosshair-preview { position: relative; min-height: 260px; overflow: hidden; background: radial-gradient(circle, #253139, #0c1013 65%); }
-.crosshair-preview::before, .crosshair-preview::after, .crosshair-preview i, .crosshair-preview b {
+.crosshair-preview { position: relative; display: grid; min-height: 260px; place-items: center; overflow: hidden; background: radial-gradient(circle, #253139, #0c1013 65%); }
+.crosshair-reticle { position: relative; width: 1px; height: 1px; color: var(--crosshair-color); }
+.crosshair-reticle::before, .crosshair-reticle::after, .crosshair-reticle i, .crosshair-reticle b {
   content: ""; position: absolute; left: 50%; top: 50%; background: var(--crosshair-color); box-shadow: 0 0 8px var(--crosshair-color);
 }
-.crosshair-preview::before, .crosshair-preview::after { width: 54px; height: 2px; }
-.crosshair-preview::before { translate: calc(-100% - 5px) -50%; }
-.crosshair-preview::after { translate: 5px -50%; }
-.crosshair-preview i, .crosshair-preview b { width: 2px; height: 54px; }
-.crosshair-preview i { translate: -50% calc(-100% - 5px); }
-.crosshair-preview b { translate: -50% 5px; }
-.crosshair-preview em { position: absolute; inset: 50% auto auto 50%; width: 4px; height: 4px; border-radius: 50%; translate: -50% -50%; background: var(--crosshair-color); box-shadow: 0 0 8px var(--crosshair-color); }
+.crosshair-reticle::before, .crosshair-reticle::after { width: var(--crosshair-line-length); height: var(--crosshair-line-thickness); }
+.crosshair-reticle::before { translate: calc(-100% - var(--crosshair-center-gap)) -50%; }
+.crosshair-reticle::after { translate: var(--crosshair-center-gap) -50%; }
+.crosshair-reticle i, .crosshair-reticle b { width: var(--crosshair-line-thickness); height: var(--crosshair-line-length); }
+.crosshair-reticle i { translate: -50% calc(-100% - var(--crosshair-center-gap)); }
+.crosshair-reticle b { translate: -50% var(--crosshair-center-gap); }
+.crosshair-reticle em { position: absolute; display: var(--crosshair-dot-display); inset: 50% auto auto 50%; width: var(--crosshair-dot-size); height: var(--crosshair-dot-size); border-radius: 50%; translate: -50% -50%; background: var(--crosshair-color); box-shadow: 0 0 8px var(--crosshair-color); }
+.crosshair-reticle--preview { transform: scale(4); }
+.nav-back { margin-left: 18px; padding: 6px 8px; color: var(--text-muted); border: 0; background: transparent; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; }
+.nav-back:hover { color: var(--cyan); }
 .filter-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 20px 0; }
 .filter-row label { width: min(100%, 220px); }
 .record-list { display: grid; gap: 4px; }

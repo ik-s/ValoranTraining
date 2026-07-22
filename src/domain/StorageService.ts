@@ -131,7 +131,13 @@ const recoverData = (raw: unknown): StoredAppData => {
     : null;
   return {
     ...defaults,
-    sensitivity: isSensitivity(raw.sensitivity) ? raw.sensitivity : null,
+    sensitivity: isSensitivity(raw.sensitivity)
+      ? {
+          ...raw.sensitivity,
+          calibrationMultiplier: 1,
+          calibratedAt: null,
+        }
+      : null,
     crosshair: recoverCrosshair(raw.crosshair),
     preferences: {
       fullscreenRecommended:

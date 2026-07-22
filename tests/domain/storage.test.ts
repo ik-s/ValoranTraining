@@ -103,6 +103,22 @@ describe("StorageService", () => {
     expect(storage.load().crosshair.color).toBe("#ff4655");
   });
 
+  it("normalizes legacy calibration values to the fixed default", () => {
+    const storage = new StorageService(localStorage);
+    storage.saveSensitivity({
+      dpi: 800,
+      valorantSensitivity: 0.32,
+      edpi: 256,
+      calibrationMultiplier: 0.82,
+      calibratedAt: "2026-07-22T00:00:00.000Z",
+    });
+
+    expect(storage.load().sensitivity).toMatchObject({
+      calibrationMultiplier: 1,
+      calibratedAt: null,
+    });
+  });
+
   it("reports a failed write so the UI can warn without losing the session", () => {
     const unavailableStorage: Storage = {
       get length() {

@@ -53,8 +53,8 @@ export const createSensitivityForm = (
     onSubmit({
       ...input,
       edpi: calculateEdpi(input.dpi, input.valorantSensitivity),
-      calibrationMultiplier: settings?.calibrationMultiplier ?? 1,
-      calibratedAt: settings?.calibratedAt ?? null,
+      calibrationMultiplier: 1,
+      calibratedAt: null,
     });
   });
   return form;

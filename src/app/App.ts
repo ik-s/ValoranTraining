@@ -1,10 +1,14 @@
 import { buildAimTrainingResult } from "../domain/ResultBuilder";
 import type { AimTrainingResult } from "../domain/Results";
 import {
+  applyCrosshairStyles,
+  crosshairStyleAttribute,
+} from "../domain/Crosshair";
+import {
   StorageService,
   type StoredAppData,
 } from "../domain/StorageService";
-import type { AimModeId, Difficulty } from "../domain/types";
+import type { AimModeId, CrosshairSettings, Difficulty } from "../domain/types";
 import { TrainingEngine } from "../engine/TrainingEngine";
 import { DomTrainingHud } from "../ui/DomTrainingHud";
 import { filterTrainingResults, type DifficultyFilter, type ModeFilter } from "../ui/RecordsViewModel";
@@ -33,6 +37,19 @@ const navItems: Array<{ screen: AppScreen; label: string }> = [
   { screen: "records", label: "RECORDS" },
   { screen: "sensitivity-settings", label: "SETTINGS" },
 ];
+
+const renderCrosshairReticle = (
+  crosshair: CrosshairSettings,
+  className: string,
+  dataAttribute: string,
+): string =>
+  '<div class="crosshair-reticle ' +
+  className +
+  '" ' +
+  dataAttribute +
+  ' style="' +
+  crosshairStyleAttribute(crosshair) +
+  '" aria-hidden="true"><i></i><b></b><em></em></div>';
 
 export class App {
   private readonly storage: StorageService;
@@ -78,46 +95,41 @@ export class App {
     if (!button) {
       return;
     }
-    const screen = button.dataset.screen as AppScreen | undefined;
-    if (screen) {
-      this.router.navigate(screen);
-      return;
-    }
     switch (button.dataset.action) {
+      case "back":
+        this.router.back();
+        return;
       case "quick-start":
         this.router.navigate(
           this.data.sensitivity ? "training-select" : "sensitivity-settings",
         );
-        break;
+        return;
       case "select-mode":
         this.selectedMode = button.dataset.mode as AimModeId;
-        this.render("training-select");
-        break;
+        this.router.navigate("training-select");
+        return;
       case "select-difficulty":
         this.selectedDifficulty = button.dataset.difficulty as Difficulty;
         this.render("training-select");
-        break;
+        return;
       case "open-training":
         this.router.navigate(
           this.data.sensitivity ? "training" : "sensitivity-settings",
         );
-        break;
+        return;
       case "start-session":
         void this.engine?.start();
-        break;
+        return;
       case "resume-session":
         void this.engine?.start();
-        break;
+        return;
       case "end-session":
         this.engine?.abort();
         this.router.navigate("training-select");
-        break;
+        return;
       case "retry":
         this.router.navigate("training");
-        break;
-      case "adjust-calibration":
-        this.adjustCalibration(Number(button.dataset.delta));
-        break;
+        return;
       case "clear-records":
         if (window.confirm("훈련 기록만 삭제할까요? 감도와 크로스헤어는 유지됩니다.")) {
           if (this.reportStorageWrite(this.storage.clearRecords())) {
@@ -125,7 +137,7 @@ export class App {
           }
           this.render("records");
         }
-        break;
+        return;
       case "reset-data":
         if (window.confirm("모든 설정과 훈련 기록을 초기화할까요?")) {
           if (this.reportStorageWrite(this.storage.resetAll())) {
@@ -133,7 +145,11 @@ export class App {
           }
           this.router.navigate("home");
         }
-        break;
+        return;
+    }
+    const screen = button.dataset.screen as AppScreen | undefined;
+    if (screen) {
+      this.router.navigate(screen);
     }
   };
 
@@ -156,7 +172,7 @@ export class App {
     this.reportStorageWrite(this.storage.saveCrosshair(next));
     const preview = this.root.querySelector<HTMLElement>("[data-crosshair-preview]");
     if (preview) {
-      preview.style.setProperty("--crosshair-color", next.color);
+      applyCrosshairStyles(preview, next);
     }
   };
 
@@ -192,9 +208,14 @@ export class App {
           "</button>",
       )
       .join("");
+    const backNavigation =
+      screen === "home"
+        ? ""
+        : '<button class="nav-back" data-action="back" type="button">← BACK</button>';
     this.root.innerHTML =
       '<div class="app-shell"><header class="topbar">' +
       '<a class="brand" href="#home" aria-label="Valoran Training home">VALORAN <span>TRAINING</span></a>' +
+      backNavigation +
       '<nav aria-label="주요 메뉴">' +
       navigation +
       "</nav></header>" +
@@ -221,8 +242,6 @@ export class App {
         return this.renderTrainingSelect();
       case "sensitivity-settings":
         return this.renderSensitivitySettings();
-      case "sensitivity-calibration":
-        return this.renderCalibration();
       case "crosshair-settings":
         return this.renderCrosshairSettings();
       case "records":
@@ -237,7 +256,7 @@ export class App {
   private renderHome(): string {
     const sensitivity = this.data.sensitivity;
     const sensitivityCard = sensitivity
-      ? '<div class="stat-grid"><div><span>DPI</span><strong>' + sensitivity.dpi + '</strong></div><div><span>SENS</span><strong>' + sensitivity.valorantSensitivity + '</strong></div><div><span>eDPI</span><strong>' + sensitivity.edpi + '</strong></div><div><span>CAL</span><strong>' + sensitivity.calibrationMultiplier.toFixed(3) + '</strong></div></div>'
+      ? '<div class="stat-grid stat-grid--three"><div><span>DPI</span><strong>' + sensitivity.dpi + '</strong></div><div><span>SENS</span><strong>' + sensitivity.valorantSensitivity + '</strong></div><div><span>eDPI</span><strong>' + sensitivity.edpi + '</strong></div></div>'
       : '<div class="empty-state"><strong>SENSITIVITY NOT SET</strong><p>훈련을 시작하기 전에 감도를 입력해주세요.</p><button class="secondary-button" data-screen="sensitivity-settings">설정하기</button></div>';
     return (
       '<section class="hero-panel"><p class="eyebrow">DESKTOP AIM SYSTEM</p><h1>VALORANT AIM<br /><span>TRAINING</span></h1><p>게임에서 사용하는 감도를 설정하고 6가지 3D 훈련으로 에임을 분석하세요.</p><div class="button-row"><button class="primary-button" data-action="quick-start">빠른 훈련 시작</button><button class="secondary-button" data-screen="sensitivity-settings">감도 설정</button></div></section>' +
@@ -296,28 +315,16 @@ export class App {
 
   private renderSensitivitySettings(): string {
     return (
-      '<section class="panel settings-panel"><p class="eyebrow">STEP 01 / 04</p><h1>감도 설정</h1><p>브라우저는 마우스 DPI를 자동으로 알 수 없습니다. 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="sensitivity-calibration">360° 보정</button><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
-    );
-  }
-
-  private renderCalibration(): string {
-    const sensitivity = this.data.sensitivity;
-    if (!sensitivity) {
-      return '<section class="panel"><h1>감도 설정이 필요합니다</h1><button class="primary-button" data-screen="sensitivity-settings">감도 입력</button></section>';
-    }
-    return (
-      '<section class="panel calibration-panel"><p class="eyebrow">STEP 03 / 04</p><h1>360° 감도 보정</h1><p>실제 마우스 패드에서 한 바퀴를 돌린 뒤 체감에 맞게 배율을 미세 조정하세요. Raw Input을 사용할 수 없는 환경에서는 특히 권장합니다.</p><output class="calibration-value">' +
-      sensitivity.calibrationMultiplier.toFixed(3) +
-      '</output><div class="button-row"><button class="secondary-button" data-action="adjust-calibration" data-delta="-0.01">덜 회전함</button><button class="primary-button" data-action="adjust-calibration" data-delta="0.001">정확히 일치</button><button class="secondary-button" data-action="adjust-calibration" data-delta="-0.001">더 회전함</button></div><button class="text-button" data-screen="training-select">모드 선택으로 이동 →</button></section>'
+      '<section class="panel settings-panel"><p class="eyebrow">STEP 01 / 03</p><h1>감도 설정</h1><p>브라우저는 마우스 DPI를 자동으로 알 수 없습니다. 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 입력한 eDPI가 훈련에 그대로 적용됩니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
     );
   }
 
   private renderCrosshairSettings(): string {
     const crosshair = this.data.crosshair;
     return (
-      '<section class="panel"><p class="eyebrow">CROSSHAIR</p><h1>크로스헤어 설정</h1><div class="crosshair-layout"><div class="crosshair-preview" data-crosshair-preview style="--crosshair-color:' +
-      crosshair.color +
-      '"><i></i><b></b><em></em><span></span></div><div class="settings-form"><label>COLOR<input data-crosshair="color" type="color" value="' +
+      '<section class="panel"><p class="eyebrow">STEP 02 / 03 · CROSSHAIR</p><h1>크로스헤어 설정</h1><div class="crosshair-layout"><div class="crosshair-preview">' +
+      renderCrosshairReticle(crosshair, "crosshair-reticle--preview", "data-crosshair-preview") +
+      '</div><div class="settings-form"><label>COLOR<input data-crosshair="color" type="color" value="' +
       crosshair.color +
       '" /></label><label>LINE LENGTH<input data-crosshair="lineLength" type="range" min="2" max="20" value="' +
       crosshair.lineLength +
@@ -327,7 +334,9 @@ export class App {
       crosshair.centerGap +
       '" /></label><label class="checkbox-label"><input data-crosshair="showCenterDot" type="checkbox" ' +
       (crosshair.showCenterDot ? "checked" : "") +
-      ' /> CENTER DOT</label></div></div><button class="primary-button" data-screen="training-select">훈련 선택으로 이동</button></section>'
+      ' /> CENTER DOT</label><label>DOT SIZE<input data-crosshair="centerDotSize" type="range" min="1" max="8" value="' +
+      crosshair.centerDotSize +
+      '" /></label></div></div><button class="primary-button" data-screen="training-select">훈련 선택으로 이동</button></section>'
     );
   }
 
@@ -413,7 +422,9 @@ export class App {
       selected.name +
       "</span><span>" +
       this.selectedDifficulty.toUpperCase() +
-      '</span><span data-hud-input>MOUSE LOCK READY</span></div><div class="arena" data-training-arena></div><div class="training-hud" data-training-hud><div class="hud-time" data-hud-time>60</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls"><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help">MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
+      '</span><span data-hud-input>MOUSE LOCK READY</span></div><div class="arena" data-training-arena></div><div class="training-hud" data-training-hud><div class="training-crosshair">' +
+      renderCrosshairReticle(this.data.crosshair, "crosshair-reticle--training", "data-training-crosshair") +
+      '</div><div class="hud-time" data-hud-time>60</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls"><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help">MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
     );
   }
 
@@ -472,7 +483,7 @@ export class App {
         } else {
           this.data = { ...this.data, sensitivity };
         }
-        this.router.navigate("sensitivity-calibration");
+        this.router.navigate("crosshair-settings");
       }),
     );
   }
@@ -509,27 +520,6 @@ export class App {
       sensitivity: this.data.sensitivity,
       crosshair: this.data.crosshair,
     });
-  }
-
-  private adjustCalibration(delta: number): void {
-    if (!this.data.sensitivity || !Number.isFinite(delta)) {
-      return;
-    }
-    const multiplier = Math.min(
-      1.5,
-      Math.max(0.5, this.data.sensitivity.calibrationMultiplier + delta),
-    );
-    const sensitivity = {
-      ...this.data.sensitivity,
-      calibrationMultiplier: Number(multiplier.toFixed(3)),
-      calibratedAt: new Date().toISOString(),
-    };
-    if (this.reportStorageWrite(this.storage.saveSensitivity(sensitivity))) {
-      this.data = this.storage.load();
-    } else {
-      this.data = { ...this.data, sensitivity };
-    }
-    this.render("sensitivity-calibration");
   }
 
   private reportStorageWrite(success: boolean): boolean {
