@@ -13,11 +13,17 @@ describe("getDifficultyPreset", () => {
     });
   });
 
-  it("marks Strafe Track as a non-shooting moving mode", () => {
+  it("uses fixed Strafe Track speeds for each difficulty", () => {
+    expect(getDifficultyPreset("strafe-track", "easy")).toMatchObject({
+      targetSpeed: { minimum: 15, maximum: 15 },
+    });
     expect(getDifficultyPreset("strafe-track", "normal")).toMatchObject({
-      targetSpeed: { minimum: 20, maximum: 28 },
+      targetSpeed: { minimum: 24, maximum: 24 },
       allowsVerticalMotion: true,
       usesShooting: false,
+    });
+    expect(getDifficultyPreset("strafe-track", "hard")).toMatchObject({
+      targetSpeed: { minimum: 38, maximum: 38 },
     });
   });
 });

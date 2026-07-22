@@ -24,9 +24,9 @@ export const DIFFICULTY_PRESETS: Record<AimModeId, DifficultyTable> = {
     hard: { targetAngularSize: 2, spawnRangeYaw: 65, spawnRangePitch: 30, minimumAngularSeparation: 24, simultaneousTargets: 6, relocationInterval: 4, usesShooting: true },
   },
   "strafe-track": {
-    easy: { targetAngularSize: 5, spawnRangeYaw: 30, spawnRangePitch: 0, targetSpeed: { minimum: 12, maximum: 18 }, allowsVerticalMotion: false, usesShooting: false },
-    normal: { targetAngularSize: 3.5, spawnRangeYaw: 45, spawnRangePitch: 6, targetSpeed: { minimum: 20, maximum: 28 }, allowsVerticalMotion: true, usesShooting: false },
-    hard: { targetAngularSize: 2.3, spawnRangeYaw: 60, spawnRangePitch: 8, targetSpeed: { minimum: 30, maximum: 42 }, allowsVerticalMotion: true, usesShooting: false },
+    easy: { targetAngularSize: 5, spawnRangeYaw: 30, spawnRangePitch: 0, targetSpeed: { minimum: 15, maximum: 15 }, allowsVerticalMotion: false, usesShooting: false },
+    normal: { targetAngularSize: 3.5, spawnRangeYaw: 45, spawnRangePitch: 6, targetSpeed: { minimum: 24, maximum: 24 }, allowsVerticalMotion: true, usesShooting: false },
+    hard: { targetAngularSize: 2.3, spawnRangeYaw: 60, spawnRangePitch: 8, targetSpeed: { minimum: 38, maximum: 38 }, allowsVerticalMotion: true, usesShooting: false },
   },
   "headshot-only": {
     easy: { targetAngularSize: 3.4, spawnRangeYaw: 30, spawnRangePitch: 12, locationHoldTime: 3, usesShooting: true },
