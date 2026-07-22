@@ -444,7 +444,7 @@ export class App {
     return (
       '<section class="panel settings-panel">' +
       this.renderPanelHeading("STEP 01 / 03", "감도 설정") +
-      '<p>브라우저는 마우스 DPI를 자동으로 알 수 없습니다. 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 입력한 eDPI가 훈련에 그대로 적용됩니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
+      '<p><strong>VALORANT 프로필</strong>이 적용됩니다. 브라우저는 마우스 DPI를 자동으로 알 수 없으니 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 훈련은 VALORANT 회전 계수와 시야각을 사용하며, 원시 마우스 입력이 지원되는 환경에서 1:1 회전을 기대할 수 있습니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
     );
   }
 

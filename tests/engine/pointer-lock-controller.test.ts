@@ -15,4 +15,14 @@ describe("PointerLockController", () => {
     await expect(controller.requestPointerLock()).resolves.toBe("standard");
     expect(rawRequests).toEqual([true, false]);
   });
+
+  it("does not report raw input when a legacy request ignores raw-input options", async () => {
+    const rawRequests: boolean[] = [];
+    const controller = new PointerLockController((raw) => {
+      rawRequests.push(raw);
+    });
+
+    await expect(controller.requestPointerLock()).resolves.toBe("standard");
+    expect(rawRequests).toEqual([true]);
+  });
 });

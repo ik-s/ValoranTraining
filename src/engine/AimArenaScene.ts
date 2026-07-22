@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { calculateValorantVerticalFov } from "../domain/ValorantView";
 import { angularSizeToWorldSize } from "../modes/TargetMath";
 import type { HitResult, TrainingTarget } from "../modes/TrainingMode";
 
@@ -40,7 +41,12 @@ export const constrainTargetToFloor = (target: TrainingTarget): TrainingTarget =
 
 export class AimArenaScene {
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(75, 1, 0.1, 250);
+  readonly camera = new THREE.PerspectiveCamera(
+    calculateValorantVerticalFov(16 / 9),
+    16 / 9,
+    0.1,
+    250,
+  );
   readonly renderer: THREE.WebGLRenderer;
   private readonly targets = new Map<string, RenderedTarget>();
 
@@ -134,6 +140,7 @@ export class AimArenaScene {
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     this.camera.aspect = width / height;
+    this.camera.fov = calculateValorantVerticalFov(this.camera.aspect);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
   }

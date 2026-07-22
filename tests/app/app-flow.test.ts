@@ -130,6 +130,15 @@ describe("App flows", () => {
     expect(root.textContent).not.toContain("360° 보정");
   });
 
+  it("explains that VALORANT profile settings are applied to training", () => {
+    const { root } = mountApp();
+    root.querySelector<HTMLButtonElement>(
+      '[data-screen="sensitivity-settings"]',
+    )!.click();
+
+    expect(root.textContent).toContain("VALORANT 프로필");
+  });
+
   it("applies line length to the crosshair preview", () => {
     const { root } = mountApp();
     root.querySelector<HTMLButtonElement>(

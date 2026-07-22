@@ -36,9 +36,9 @@ export class DomTrainingHud implements TrainingHudAdapter {
     if (input) {
       input.textContent =
         state.pointerLockMode === "raw"
-          ? "RAW INPUT ACTIVE"
+          ? "RAW INPUT · VALORANT 1:1"
           : state.pointerLockMode === "standard"
-            ? "STANDARD INPUT ACTIVE"
+            ? "STANDARD INPUT · 1:1 보장 불가"
             : "MOUSE LOCK READY";
     }
     if (performance) {

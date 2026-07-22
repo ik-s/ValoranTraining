@@ -20,6 +20,12 @@ export interface SensitivityValidationResult {
 export const calculateEdpi = (dpi: number, valorantSensitivity: number): number =>
   dpi * valorantSensitivity;
 
+export const calculateCmPer360 = (
+  dpi: number,
+  valorantSensitivity: number,
+): number =>
+  (360 / (VALORANT_YAW_COEFFICIENT * valorantSensitivity) / dpi) * 2.54;
+
 export const clampCalibrationMultiplier = (value: number): number =>
   Math.min(MAX_CALIBRATION, Math.max(MIN_CALIBRATION, value));
 
