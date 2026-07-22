@@ -470,7 +470,7 @@ export class App {
       renderCrosshairReticle(crosshair, "crosshair-reticle--preview", "data-crosshair-preview") +
       '</div><div class="settings-form"><label>COLOR<input data-crosshair="color" type="color" value="' +
       crosshair.color +
-      '" /></label><label>LINE LENGTH<input data-crosshair="lineLength" type="range" min="2" max="20" value="' +
+      '" /></label><label>LINE LENGTH<input data-crosshair="lineLength" type="range" min="0" max="20" value="' +
       crosshair.lineLength +
       '" /></label><label>THICKNESS<input data-crosshair="lineThickness" type="range" min="1" max="6" value="' +
       crosshair.lineThickness +

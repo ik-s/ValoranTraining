@@ -162,7 +162,7 @@ describe("App flows", () => {
     expect(root.textContent).toContain("VALORANT 프로필");
   });
 
-  it("applies line length to the crosshair preview", () => {
+  it("allows zero line length for a dot-only crosshair", () => {
     const { root } = mountApp();
     root.querySelector<HTMLButtonElement>(
       '[data-screen="sensitivity-settings"]',
@@ -175,10 +175,12 @@ describe("App flows", () => {
     )!;
     const preview = root.querySelector<HTMLElement>("[data-crosshair-preview]")!;
 
-    length.value = "14";
+    expect(length.min).toBe("0");
+
+    length.value = "0";
     length.dispatchEvent(new Event("input", { bubbles: true }));
 
-    expect(preview.style.getPropertyValue("--crosshair-line-length")).toBe("14px");
+    expect(preview.style.getPropertyValue("--crosshair-line-length")).toBe("0px");
   });
 
   it("renders the configured crosshair in the training HUD", () => {
