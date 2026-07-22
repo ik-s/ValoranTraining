@@ -53,6 +53,42 @@ const difficultyTranslations: Record<Difficulty, string> = {
   hard: "어려움 난이도",
 };
 
+const trainingDurations = [30, 60] as const;
+type TrainingDuration = (typeof trainingDurations)[number];
+
+const difficultySummaries: Record<AimModeId, Record<Difficulty, string>> = {
+  "grid-shot": {
+    easy: "큰 표적 · 좁은 생성 범위 · 표적 3개",
+    normal: "중간 표적 · 넓어진 생성 범위 · 표적 3개",
+    hard: "작은 표적 · 넓은 생성 범위 · 표적 간격 증가",
+  },
+  "micro-flick": {
+    easy: "큰 표적 · 가까운 미세 조준",
+    normal: "중간 표적 · 더 먼 미세 조준",
+    hard: "작은 표적 · 가장 먼 미세 조준",
+  },
+  "reaction-shot": {
+    easy: "큰 표적 · 1.5초 노출",
+    normal: "중간 표적 · 1초 노출",
+    hard: "작은 표적 · 0.7초 노출",
+  },
+  "target-switching": {
+    easy: "큰 표적 · 4개 표적 · 8초마다 이동",
+    normal: "중간 표적 · 5개 표적 · 6초마다 이동",
+    hard: "작은 표적 · 6개 표적 · 4초마다 이동",
+  },
+  "strafe-track": {
+    easy: "큰 표적 · 느린 좌우 이동",
+    normal: "중간 표적 · 빠른 상하 이동",
+    hard: "작은 표적 · 가장 빠른 상하 이동",
+  },
+  "headshot-only": {
+    easy: "큰 헤드 표적 · 3초 유지",
+    normal: "중간 헤드 표적 · 2초 유지",
+    hard: "작은 헤드 표적 · 1.3초 유지",
+  },
+};
+
 type ResultMetricFormat = "count" | "ratio" | "seconds" | "degrees" | "hits-per-second";
 
 interface ResultMetricMeta {
@@ -114,6 +150,7 @@ export class App {
   private engine: TrainingEngine | null = null;
   private selectedMode: AimModeId;
   private selectedDifficulty: Difficulty;
+  private selectedDuration: TrainingDuration = 60;
   private currentResult: AimTrainingResult | null = null;
   private modeFilter: ModeFilter = "all";
   private difficultyFilter: DifficultyFilter = "all";
@@ -172,6 +209,10 @@ export class App {
         return;
       case "select-difficulty":
         this.selectedDifficulty = button.dataset.difficulty as Difficulty;
+        this.render("training-select");
+        return;
+      case "select-duration":
+        this.selectedDuration = Number(button.dataset.duration) as TrainingDuration;
         this.render("training-select");
         return;
       case "open-training":
@@ -378,7 +419,24 @@ export class App {
             "</button>",
         )
         .join("") +
-      '</div><button class="primary-button training-ready-button" data-action="open-training">60초 훈련 준비</button></div></section>'
+      '</div><p class="difficulty-summary" data-difficulty-summary><strong>난이도 요약</strong>' +
+      difficultySummaries[this.selectedMode][this.selectedDifficulty] +
+      '</p><div class="duration-selector"><p>TRAINING TIME <small>훈련 시간</small></p><div class="duration-row">' +
+      trainingDurations
+        .map(
+          (duration) =>
+            '<button class="duration-button ' +
+            (duration === this.selectedDuration ? "is-selected" : "") +
+            '" data-action="select-duration" data-duration="' +
+            duration +
+            '">' +
+            duration +
+            "초</button>",
+        )
+        .join("") +
+      '</div></div><button class="primary-button training-ready-button" data-action="open-training">' +
+      this.selectedDuration +
+      "초 훈련 준비</button></div></section>"
     );
   }
 
@@ -435,6 +493,9 @@ export class App {
                 result.modeId.toUpperCase() +
                 "</span><span>" +
                 result.difficulty.toUpperCase() +
+                " · " +
+                result.durationSeconds +
+                "초" +
                 "</span><strong>" +
                 result.score +
                 '</strong><span>PERSONAL BEST</span></article>',
@@ -442,7 +503,7 @@ export class App {
             .join("");
     const rows =
       results.length === 0
-        ? '<div class="empty-state"><strong>NO RECORDS YET</strong><p>첫 60초 훈련을 완료하면 결과가 여기에 저장됩니다.</p></div>'
+        ? '<div class="empty-state"><strong>NO RECORDS YET</strong><p>첫 훈련을 완료하면 결과가 여기에 저장됩니다.</p></div>'
         : results
             .map(
               (result) =>
@@ -450,6 +511,9 @@ export class App {
                 result.modeId.toUpperCase() +
                 "</span><span>" +
                 result.difficulty.toUpperCase() +
+                " · " +
+                result.durationSeconds +
+                "초" +
                 "</span><strong>" +
                 result.score +
                 "</strong><span>" +
@@ -499,7 +563,9 @@ export class App {
       this.selectedDifficulty.toUpperCase() +
       '</span><span data-hud-input>MOUSE LOCK READY</span></div><div class="arena" data-training-arena></div><div class="training-hud" data-training-hud><div class="training-crosshair">' +
       renderCrosshairReticle(this.data.crosshair, "crosshair-reticle--training", "data-training-crosshair") +
-      '</div><div class="hud-time" data-hud-time>60</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls" data-training-controls><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help" data-training-help>MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
+      '</div><div class="hud-time" data-hud-time>' +
+      this.selectedDuration +
+      '</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls" data-training-controls><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help" data-training-help>MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
     );
   }
 
@@ -535,7 +601,10 @@ export class App {
     return (
       '<section class="panel result-panel">' +
       this.renderPanelHeading(
-        "60 SECONDS COMPLETE<small>60초 훈련 완료</small>",
+        result.durationSeconds +
+          " SECONDS COMPLETE<small>" +
+          result.durationSeconds +
+          "초 훈련 완료</small>",
         result.modeId.toUpperCase(),
       ) +
       '<p class="result-mode-translation">' +
@@ -595,6 +664,7 @@ export class App {
           {
             modeId: this.selectedMode,
             difficulty: this.selectedDifficulty,
+            durationSeconds: this.selectedDuration,
             sensitivity: this.data.sensitivity!,
           },
           metrics,
@@ -610,7 +680,7 @@ export class App {
     this.engine.prepare({
       modeId: this.selectedMode,
       difficulty: this.selectedDifficulty,
-      durationSeconds: 60,
+      durationSeconds: this.selectedDuration,
       sensitivity: this.data.sensitivity,
       crosshair: this.data.crosshair,
     });

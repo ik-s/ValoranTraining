@@ -8,6 +8,7 @@ import type { PointerLockMode } from "../engine/PointerLockController";
 export interface ResultBuildConfig {
   modeId: AimModeId;
   difficulty: Difficulty;
+  durationSeconds: 30 | 60;
   sensitivity: ValorantSensitivitySettings;
 }
 
@@ -26,7 +27,7 @@ export const buildAimTrainingResult = (
     resultType: "aim",
     difficulty: config.difficulty,
     playedAt: new Date().toISOString(),
-    durationSeconds: 60,
+    durationSeconds: config.durationSeconds,
     score: asNumber(metrics.score),
     accuracy: config.modeId === "strafe-track" ? null : asNumber(metrics.accuracy),
     hits,

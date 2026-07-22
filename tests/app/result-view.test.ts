@@ -53,4 +53,15 @@ describe("result view", () => {
     expect(markup).not.toContain("feedback-grid");
     expect(markup).not.toContain("난이도 변경");
   });
+
+  it("uses the completed session duration in the result heading", () => {
+    const app = new App(document.createElement("div"));
+    const harness = app as unknown as {
+      currentResult: GridShotResult;
+      renderResult: () => string;
+    };
+    harness.currentResult = { ...result, durationSeconds: 30 };
+
+    expect(harness.renderResult()).toContain("30초 훈련 완료");
+  });
 });

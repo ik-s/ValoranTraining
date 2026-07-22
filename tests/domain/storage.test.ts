@@ -6,13 +6,14 @@ import type { GridShotResult } from "../../src/domain/Results";
 const makeResult = (
   score: number,
   id: string = crypto.randomUUID(),
+  durationSeconds: 30 | 60 = 60,
 ): GridShotResult => ({
   id,
   resultType: "aim",
   modeId: "grid-shot",
   difficulty: "normal",
   playedAt: "2026-07-22T00:00:00.000Z",
-  durationSeconds: 60,
+  durationSeconds,
   score,
   accuracy: 0.8,
   hits: 8,
@@ -41,7 +42,7 @@ describe("StorageService", () => {
       storage.record(makeResult(index, String(index)));
     }
 
-    const records = storage.load().records.aim.recent["grid-shot:normal"];
+    const records = storage.load().records.aim.recent["grid-shot:normal:60"];
     expect(records).toHaveLength(10);
     expect(records[0]?.score).toBe(10);
     expect(records.at(-1)?.score).toBe(1);
@@ -53,8 +54,18 @@ describe("StorageService", () => {
     storage.record(makeResult(150, "lower"));
 
     expect(
-      storage.load().records.aim.personalBests["grid-shot:normal"]?.id,
+      storage.load().records.aim.personalBests["grid-shot:normal:60"]?.id,
     ).toBe("best");
+  });
+
+  it("keeps personal bests separate for thirty- and sixty-second sessions", () => {
+    const storage = new StorageService(localStorage);
+    storage.record(makeResult(200, "sixty", 60));
+    storage.record(makeResult(150, "thirty", 30));
+
+    const personalBests = storage.load().records.aim.personalBests;
+    expect(personalBests["grid-shot:normal:60"]?.id).toBe("sixty");
+    expect(personalBests["grid-shot:normal:30"]?.id).toBe("thirty");
   });
 
   it("recovers defaults when the saved JSON is malformed", () => {

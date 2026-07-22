@@ -56,7 +56,8 @@ export const createDefaultAppData = (): StoredAppData => ({
 export const modeDifficultyKey = (
   modeId: AimModeId,
   difficulty: Difficulty,
-): ModeDifficultyKey => modeId + ":" + difficulty;
+  durationSeconds: number,
+): ModeDifficultyKey => modeId + ":" + difficulty + ":" + durationSeconds;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -100,16 +101,32 @@ const recoverRecords = (value: unknown): StoredTrainingRecords => {
   const aim = value.aim;
   const recent: Record<ModeDifficultyKey, AimTrainingResult[]> = {};
   if (isObject(aim.recent)) {
-    for (const [key, entries] of Object.entries(aim.recent)) {
+    for (const entries of Object.values(aim.recent)) {
       if (Array.isArray(entries)) {
-        recent[key] = entries.filter(isAimResult).slice(0, 10);
+        for (const result of entries.filter(isAimResult)) {
+          const key = modeDifficultyKey(
+            result.modeId,
+            result.difficulty,
+            result.durationSeconds,
+          );
+          recent[key] = [...(recent[key] ?? []), result].slice(0, 10);
+        }
       }
     }
   }
   const personalBests: Record<ModeDifficultyKey, AimTrainingResult | null> = {};
   if (isObject(aim.personalBests)) {
-    for (const [key, entry] of Object.entries(aim.personalBests)) {
-      personalBests[key] = isAimResult(entry) ? entry : null;
+    for (const entry of Object.values(aim.personalBests)) {
+      if (isAimResult(entry)) {
+        const key = modeDifficultyKey(
+          entry.modeId,
+          entry.difficulty,
+          entry.durationSeconds,
+        );
+        const previousBest = personalBests[key] ?? null;
+        personalBests[key] =
+          !previousBest || entry.score > previousBest.score ? entry : previousBest;
+      }
     }
   }
   return { aim: { recent, personalBests } };
@@ -189,7 +206,11 @@ export class StorageService {
 
   record(result: AimTrainingResult): boolean {
     const data = this.load();
-    const key = modeDifficultyKey(result.modeId, result.difficulty);
+    const key = modeDifficultyKey(
+      result.modeId,
+      result.difficulty,
+      result.durationSeconds,
+    );
     const previousRecent = data.records.aim.recent[key] ?? [];
     const previousBest = data.records.aim.personalBests[key] ?? null;
     const recent = {

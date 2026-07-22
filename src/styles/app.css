@@ -62,8 +62,8 @@
 .panel-back:hover { border-color: var(--cyan); color: var(--cyan); }
 .section-heading { margin: 10px 0 18px; }
 .section-heading h2 { margin: 0; font-size: 1.55rem; }
-.button-row, .settings-links, .difficulty-row { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
-.primary-button, .secondary-button, .text-button, .difficulty-button {
+.button-row, .settings-links, .difficulty-row, .duration-row { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.primary-button, .secondary-button, .text-button, .difficulty-button, .duration-button {
   border: 1px solid transparent;
   padding: 12px 17px;
   font-weight: 800;
@@ -72,8 +72,8 @@
 }
 .primary-button { color: #111; background: var(--red); }
 .primary-button:hover { filter: brightness(1.13); }
-.secondary-button, .difficulty-button { color: #f3f6f7; border-color: var(--line); background: #20282e; }
-.secondary-button:hover, .difficulty-button:hover, .difficulty-button.is-selected { border-color: var(--cyan); color: var(--cyan); }
+.secondary-button, .difficulty-button, .duration-button { color: #f3f6f7; border-color: var(--line); background: #20282e; }
+.secondary-button:hover, .difficulty-button:hover, .difficulty-button.is-selected, .duration-button:hover, .duration-button.is-selected { border-color: var(--cyan); color: var(--cyan); }
 .text-button { padding-inline: 0; color: var(--cyan); background: transparent; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); }
 .stat-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -91,6 +91,12 @@
 .selection-summary { margin-top: 28px; padding: 26px; border-left: 3px solid var(--red); background: #0f1418; }
 .selection-summary h2 { margin: 4px 0; }
 .selection-summary > p { color: var(--text-muted); }
+.difficulty-summary { display: grid; gap: 5px; margin: 16px 0 0; padding: 14px 16px; color: var(--text-muted); border: 1px solid var(--line); background: #11171b; }
+.difficulty-summary strong, .duration-selector > p { color: var(--cyan); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.12em; }
+.duration-selector { margin-top: 20px; }
+.duration-selector > p { margin: 0; }
+.duration-selector > p small { margin-left: 8px; color: var(--text-muted); font-size: 0.9em; }
+.duration-row { margin-top: 10px; }
 .training-select-panel .panel-heading { margin-bottom: 36px; }
 .training-ready-button { margin-top: 30px; }
 .settings-panel { max-width: 720px; margin-inline: auto; }

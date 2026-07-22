@@ -8,6 +8,7 @@ describe("buildAimTrainingResult", () => {
       {
         modeId: "grid-shot",
         difficulty: "normal",
+        durationSeconds: 30,
         sensitivity: {
           dpi: 800,
           valorantSensitivity: 0.32,
@@ -27,11 +28,12 @@ describe("buildAimTrainingResult", () => {
       score: 200,
       hits: 2,
       misses: 1,
+      durationSeconds: 30,
     });
     if (result.modeId !== "grid-shot") {
       throw new Error("Expected a Grid Shot result.");
     }
-    expect(result.modeMetrics.hitsPerSecond).toBeCloseTo(2 / 60);
+    expect(result.modeMetrics.hitsPerSecond).toBeCloseTo(2 / 30);
     expect(result.modeMetrics).not.toHaveProperty("averageFlickAngle");
   });
 });

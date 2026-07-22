@@ -20,7 +20,7 @@ import type { TrainingHudAdapter } from "./TrainingHudAdapter";
 export interface AimTrainingSessionConfig {
   modeId: import("../domain/types").AimModeId;
   difficulty: Difficulty;
-  durationSeconds: 60;
+  durationSeconds: 30 | 60;
   sensitivity: ValorantSensitivitySettings;
   crosshair: CrosshairSettings;
 }

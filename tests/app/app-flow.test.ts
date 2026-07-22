@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../../src/app/App";
 import { StorageService } from "../../src/domain/StorageService";
+import { TrainingEngine } from "../../src/engine/TrainingEngine";
 
 const mountApp = (): { app: App; root: HTMLDivElement } => {
   const root = document.createElement("div");
@@ -54,6 +55,60 @@ describe("App flows", () => {
 
     expect(root.querySelector(".training-select-panel")).not.toBeNull();
     expect(root.querySelector(".training-ready-button")).not.toBeNull();
+  });
+
+  it("shows a difficulty summary and updates the selected training duration", () => {
+    const { root } = mountApp();
+    root.querySelector<HTMLButtonElement>(
+      '[data-action="select-mode"][data-mode="grid-shot"]',
+    )!.click();
+    root.querySelector<HTMLButtonElement>(
+      '[data-action="select-difficulty"][data-difficulty="hard"]',
+    )!.click();
+
+    expect(root.querySelector("[data-difficulty-summary]")?.textContent).toContain(
+      "작은 표적",
+    );
+
+    root.querySelector<HTMLButtonElement>(
+      '[data-action="select-duration"][data-duration="30"]',
+    )!.click();
+
+    expect(
+      root.querySelector('[data-duration="30"]')?.classList.contains("is-selected"),
+    ).toBe(true);
+    expect(root.querySelector(".training-ready-button")?.textContent).toBe(
+      "30초 훈련 준비",
+    );
+  });
+
+  it("prepares a thirty-second session when 30 seconds is selected", () => {
+    new StorageService(localStorage).saveSensitivity({
+      dpi: 800,
+      valorantSensitivity: 0.32,
+      edpi: 256,
+      calibrationMultiplier: 1,
+      calibratedAt: null,
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      {} as WebGLRenderingContext,
+    );
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+    const prepare = vi
+      .spyOn(TrainingEngine.prototype, "prepare")
+      .mockImplementation(() => undefined);
+    const { root } = mountApp();
+
+    root.querySelector<HTMLButtonElement>('[data-action="quick-start"]')!.click();
+    root.querySelector<HTMLButtonElement>(
+      '[data-action="select-duration"][data-duration="30"]',
+    )!.click();
+    root.querySelector<HTMLButtonElement>('[data-action="open-training"]')!.click();
+
+    expect(prepare).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSeconds: 30 }),
+    );
+    expect(root.querySelector("[data-hud-time]")?.textContent).toBe("30");
   });
 
   it("continues from sensitivity input to crosshair settings", () => {

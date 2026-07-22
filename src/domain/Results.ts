@@ -14,7 +14,7 @@ export interface BaseTrainingResult {
   modeId: AimModeId;
   difficulty: Difficulty;
   playedAt: string;
-  durationSeconds: 60;
+  durationSeconds: 30 | 60;
   score: number;
   accuracy: number | null;
   hits: number;
