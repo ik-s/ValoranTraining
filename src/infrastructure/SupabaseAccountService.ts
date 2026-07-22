@@ -15,6 +15,13 @@ import type { SupabasePublicConfig } from "./SupabaseConfig";
 export interface AccountProfile {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
+  profileCompleted: boolean;
+}
+
+export interface ProfileSaveInput {
+  displayName: string;
+  avatarFile: File | null;
 }
 
 export interface LeaderboardFilter {
@@ -35,6 +42,41 @@ const browserClients = new Map<string, SupabaseClient>();
 
 const fallbackDisplayName = (user: User): string =>
   "훈련생-" + user.id.replaceAll("-", "").slice(0, 6).toUpperCase();
+
+const avatarMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxAvatarBytes = 2 * 1024 * 1024;
+
+const asHttpsUrl = (value: unknown): string | null => {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+const fallbackAvatarUrl = (user: User): string | null =>
+  asHttpsUrl(user.user_metadata.avatar_url) ?? asHttpsUrl(user.user_metadata.picture);
+
+const toAccountProfile = (
+  user: User,
+  row: {
+    display_name?: unknown;
+    avatar_url?: unknown;
+    profile_completed?: unknown;
+  } | null,
+): AccountProfile => ({
+  id: user.id,
+  displayName:
+    typeof row?.display_name === "string" && row.display_name.length > 0
+      ? row.display_name
+      : fallbackDisplayName(user),
+  avatarUrl: asHttpsUrl(row?.avatar_url) ?? fallbackAvatarUrl(user),
+  profileCompleted: row?.profile_completed === true,
+});
 
 const asError = (error: unknown, fallback: string): Error =>
   error instanceof Error ? error : new Error(fallback);
@@ -120,19 +162,75 @@ export class SupabaseAccountService {
   async getProfile(user: User): Promise<AccountProfile> {
     const { data, error } = await this.client
       .from("profiles")
-      .select("display_name")
+      .select("display_name, avatar_url, profile_completed")
       .eq("id", user.id)
       .maybeSingle();
     if (error) {
       throw asError(error, "프로필을 불러오지 못했습니다.");
     }
-    return {
-      id: user.id,
-      displayName:
-        typeof data?.display_name === "string" && data.display_name.length > 0
-          ? data.display_name
-          : fallbackDisplayName(user),
-    };
+    return toAccountProfile(user, data);
+  }
+
+  async saveProfile(input: ProfileSaveInput): Promise<AccountProfile> {
+    const displayName = input.displayName.trim();
+    if (displayName.length < 3 || displayName.length > 32) {
+      throw new Error("닉네임은 3~32자로 입력해주세요.");
+    }
+    if (
+      input.avatarFile &&
+      (!avatarMimeTypes.has(input.avatarFile.type) ||
+        input.avatarFile.size > maxAvatarBytes)
+    ) {
+      throw new Error(
+        "프로필 사진은 2MB 이하의 JPEG, PNG, WebP 파일만 사용할 수 있습니다.",
+      );
+    }
+
+    const { data: authData, error: authError } = await this.client.auth.getUser();
+    if (authError || !authData.user) {
+      throw asError(authError, "로그인이 필요합니다.");
+    }
+    const user = authData.user;
+    const existing = await this.getProfile(user);
+    let avatarUrl = existing.avatarUrl;
+
+    if (input.avatarFile) {
+      const avatarStorage = this.client.storage.from("profile-avatars");
+      const { error } = await avatarStorage.upload(
+        user.id + "/avatar",
+        input.avatarFile,
+        {
+          upsert: true,
+          contentType: input.avatarFile.type,
+          cacheControl: "3600",
+        },
+      );
+      if (error) {
+        throw asError(error, "프로필 사진을 업로드하지 못했습니다.");
+      }
+      const { data } = avatarStorage.getPublicUrl(user.id + "/avatar");
+      const publicUrl = asHttpsUrl(data.publicUrl);
+      if (!publicUrl) {
+        throw new Error("프로필 사진 주소를 만들지 못했습니다.");
+      }
+      avatarUrl = publicUrl + "?v=" + Date.now();
+    }
+
+    const { data, error } = await this.client
+      .from("profiles")
+      .update({
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        profile_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id)
+      .select("display_name, avatar_url, profile_completed")
+      .single();
+    if (error) {
+      throw asError(error, "프로필을 저장하지 못했습니다.");
+    }
+    return toAccountProfile(user, data);
   }
 
   async saveRun(result: AimTrainingResult): Promise<void> {
