@@ -127,6 +127,14 @@ export class StrafeTrackMode implements TrainingMode {
     };
   }
 
+  getSpeed(): number {
+    return this.speed;
+  }
+
+  getDirection(): "left" | "right" {
+    return this.direction;
+  }
+
   dispose(): void {
     if (this.target) {
       this.context.removeTarget(this.target.id);
