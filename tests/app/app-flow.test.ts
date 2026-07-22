@@ -111,6 +111,18 @@ describe("App flows", () => {
     expect(root.querySelector(".hero-panel")).not.toBeNull();
   });
 
+  it("keeps a fresh visitor in the guest state when session restoration fails", async () => {
+    const { root } = mountApp({
+      getCurrentAccount: vi.fn().mockRejectedValue(new Error("No session")),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+    } as unknown as SupabaseAccountService);
+
+    await vi.waitFor(() => {
+      expect(root.querySelector('[data-action="sign-in-google"]')).not.toBeNull();
+      expect(root.querySelector(".account-message")).toBeNull();
+    });
+  });
+
   it("uploads unsynced local results after a Google session is restored", async () => {
     const saved: GridShotResult = {
       id: "1cfe71c4-d538-4fb4-9d1a-88a1b1e8b2a1",

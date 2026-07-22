@@ -948,7 +948,11 @@ export class App {
         void this.syncAccount(user);
       });
     } catch {
-      this.accountMessage = "Google 로그인 정보를 불러오지 못했습니다.";
+      // A missing or stale browser session must not look like a failed login.
+      // The sign-in button remains the recovery path for a guest visitor.
+      this.account = null;
+      this.remoteResults = [];
+      this.accountMessage = null;
     }
     this.renderAfterAccountChange();
   }
