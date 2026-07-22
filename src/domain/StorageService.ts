@@ -160,23 +160,28 @@ export class StorageService {
   constructor(private readonly storage: Storage) {}
 
   load(): StoredAppData {
-    const raw = this.storage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return createDefaultAppData();
-    }
     try {
+      const raw = this.storage.getItem(STORAGE_KEY);
+      if (!raw) {
+        return createDefaultAppData();
+      }
       return recoverData(JSON.parse(raw));
     } catch {
       return createDefaultAppData();
     }
   }
 
-  saveSensitivity(sensitivity: ValorantSensitivitySettings): void {
+  saveSensitivity(sensitivity: ValorantSensitivitySettings): boolean {
     const data = this.load();
-    this.save({ ...data, sensitivity });
+    return this.save({ ...data, sensitivity });
   }
 
-  record(result: AimTrainingResult): void {
+  saveCrosshair(crosshair: CrosshairSettings): boolean {
+    const data = this.load();
+    return this.save({ ...data, crosshair });
+  }
+
+  record(result: AimTrainingResult): boolean {
     const data = this.load();
     const key = modeDifficultyKey(result.modeId, result.difficulty);
     const previousRecent = data.records.aim.recent[key] ?? [];
@@ -190,23 +195,28 @@ export class StorageService {
       [key]:
         !previousBest || result.score > previousBest.score ? result : previousBest,
     };
-    this.save({
+    return this.save({
       ...data,
       records: { aim: { recent, personalBests } },
       lastSelection: { modeId: result.modeId, difficulty: result.difficulty },
     });
   }
 
-  clearRecords(): void {
+  clearRecords(): boolean {
     const data = this.load();
-    this.save({ ...data, records: { aim: { recent: {}, personalBests: {} } } });
+    return this.save({ ...data, records: { aim: { recent: {}, personalBests: {} } } });
   }
 
-  resetAll(): void {
-    this.save(createDefaultAppData());
+  resetAll(): boolean {
+    return this.save(createDefaultAppData());
   }
 
-  private save(data: StoredAppData): void {
-    this.storage.setItem(STORAGE_KEY, JSON.stringify(data));
+  private save(data: StoredAppData): boolean {
+    try {
+      this.storage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

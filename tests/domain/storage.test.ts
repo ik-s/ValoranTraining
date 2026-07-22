@@ -87,4 +87,37 @@ describe("StorageService", () => {
     expect(data.records.aim.recent).toEqual({});
     expect(data.records.aim.personalBests).toEqual({});
   });
+
+  it("persists updated crosshair settings", () => {
+    const storage = new StorageService(localStorage);
+
+    storage.saveCrosshair({
+      color: "#ff4655",
+      lineLength: 10,
+      lineThickness: 2,
+      centerGap: 4,
+      showCenterDot: true,
+      centerDotSize: 2,
+    });
+
+    expect(storage.load().crosshair.color).toBe("#ff4655");
+  });
+
+  it("reports a failed write so the UI can warn without losing the session", () => {
+    const unavailableStorage: Storage = {
+      get length() {
+        return 0;
+      },
+      clear: () => undefined,
+      getItem: () => null,
+      key: () => null,
+      removeItem: () => undefined,
+      setItem: () => {
+        throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+      },
+    };
+    const storage = new StorageService(unavailableStorage);
+
+    expect(storage.saveCrosshair(storage.load().crosshair)).toBe(false);
+  });
 });

@@ -11,6 +11,7 @@ import { AimArenaScene } from "./AimArenaScene";
 import { AudioManager } from "./AudioManager";
 import { CameraController } from "./CameraController";
 import { InputManager } from "./InputManager";
+import { PerformanceMonitor } from "./PerformanceMonitor";
 import type { PointerLockMode } from "./PointerLockController";
 import { SessionClock } from "./SessionClock";
 import { SessionStateMachine } from "./SessionStateMachine";
@@ -32,6 +33,7 @@ export interface TrainingEngineCallbacks {
 export class TrainingEngine {
   private readonly state = new SessionStateMachine();
   private readonly audio = new AudioManager();
+  private readonly performance = new PerformanceMonitor();
   private scene: AimArenaScene | null = null;
   private input: InputManager | null = null;
   private camera: CameraController | null = null;
@@ -79,6 +81,7 @@ export class TrainingEngine {
     this.mode.initialize(performance.now());
     this.state.prepare();
     this.lastFrameAt = performance.now();
+    this.performance.reset();
     this.animationFrameId = requestAnimationFrame(this.frame);
     this.notify();
   }
@@ -146,8 +149,10 @@ export class TrainingEngine {
   }
 
   private readonly frame = (now: number): void => {
-    const deltaTimeSeconds = Math.min(0.1, Math.max(0, (now - this.lastFrameAt) / 1_000));
+    const rawDeltaSeconds = Math.max(0, (now - this.lastFrameAt) / 1_000);
+    const deltaTimeSeconds = Math.min(0.1, rawDeltaSeconds);
     this.lastFrameAt = now;
+    this.performance.recordFrame(rawDeltaSeconds);
     const status = this.state.getStatus();
     if (status === "countdown") {
       this.updateCountdown(now);
@@ -236,6 +241,7 @@ export class TrainingEngine {
       pointerLockMode: this.pointerLockMode,
       remainingSeconds: this.clock?.remainingSeconds(now) ?? 60,
       countdownSeconds,
+      performanceWarning: this.performance.isBelowTarget(),
       metrics: this.mode?.getMetrics() ?? {},
     });
   }

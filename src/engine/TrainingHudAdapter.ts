@@ -6,6 +6,7 @@ export interface TrainingHudState {
   pointerLockMode: PointerLockMode;
   remainingSeconds: number;
   countdownSeconds: number | null;
+  performanceWarning: boolean;
   metrics: Record<string, number | null>;
 }
 
