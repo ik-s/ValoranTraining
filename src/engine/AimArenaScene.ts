@@ -11,6 +11,11 @@ interface RenderedTarget {
 
 const degreesToRadians = (value: number): number => (value * Math.PI) / 180;
 
+// Training targets use positive yaw for the right side of the arena, while
+// Three.js rotates a camera with positive yaw toward the left.
+export const toSceneCameraYaw = (logicalYaw: number): number => -logicalYaw;
+const toLogicalYaw = (sceneYaw: number): number => -sceneYaw;
+
 export class AimArenaScene {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(75, 1, 0.1, 250);
@@ -88,13 +93,17 @@ export class AimArenaScene {
   }
 
   getAngularErrorToTarget(target: TrainingTarget): number {
-    const yaw = THREE.MathUtils.radToDeg(this.camera.rotation.y);
+    const yaw = toLogicalYaw(THREE.MathUtils.radToDeg(this.camera.rotation.y));
     const pitch = THREE.MathUtils.radToDeg(this.camera.rotation.x);
     return Math.hypot(target.yaw - yaw, target.pitch - pitch);
   }
 
   applyCameraRotation(yaw: number, pitch: number): void {
-    this.camera.rotation.set(degreesToRadians(pitch), degreesToRadians(yaw), 0);
+    this.camera.rotation.set(
+      degreesToRadians(pitch),
+      degreesToRadians(toSceneCameraYaw(yaw)),
+      0,
+    );
   }
 
   resize(): void {
