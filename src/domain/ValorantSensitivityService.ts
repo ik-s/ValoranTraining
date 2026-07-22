@@ -1,4 +1,5 @@
 export const VALORANT_YAW_COEFFICIENT = 0.07;
+export const TRAINING_SENSITIVITY_OFFSET = 0.19;
 const MIN_DPI = 100;
 const MAX_DPI = 20_000;
 const MIN_SENSITIVITY = 0.001;
@@ -28,6 +29,12 @@ export const calculateCmPer360 = (
 
 export const clampCalibrationMultiplier = (value: number): number =>
   Math.min(MAX_CALIBRATION, Math.max(MIN_CALIBRATION, value));
+
+export const calculateEffectiveTrainingSensitivity = (
+  displayedSensitivity: number,
+): number =>
+  Math.min(MAX_SENSITIVITY, Math.max(MIN_SENSITIVITY, displayedSensitivity)) +
+  TRAINING_SENSITIVITY_OFFSET;
 
 export const calculateRotationDelta = (
   mouseMovementCount: number,

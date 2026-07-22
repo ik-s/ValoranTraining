@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  TRAINING_SENSITIVITY_OFFSET,
   VALORANT_YAW_COEFFICIENT,
   calculateEdpi,
+  calculateEffectiveTrainingSensitivity,
   calculateRotationDelta,
   clampCalibrationMultiplier,
   validateValorantSensitivity,
@@ -11,6 +13,14 @@ import {
 describe("ValorantSensitivityService", () => {
   it("calculates eDPI from DPI and VALORANT sensitivity", () => {
     expect(calculateEdpi(800, 0.32)).toBe(256);
+  });
+
+  it("adds the hidden training offset without changing the displayed sensitivity", () => {
+    const displayedSensitivity = 0.24;
+
+    expect(TRAINING_SENSITIVITY_OFFSET).toBe(0.19);
+    expect(calculateEffectiveTrainingSensitivity(displayedSensitivity)).toBe(0.43);
+    expect(displayedSensitivity).toBe(0.24);
   });
 
   it("rejects DPI outside the supported integer range", () => {
