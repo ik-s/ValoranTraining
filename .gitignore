@@ -2,3 +2,15 @@ node_modules/
 dist/
 coverage/
 .vite/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and operating-system files
+*.log
+.DS_Store
+
+# Local analysis cache
+.code-review-graph/
