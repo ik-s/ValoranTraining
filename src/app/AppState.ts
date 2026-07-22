@@ -5,6 +5,7 @@ export const appScreens = [
   "crosshair-settings",
   "records",
   "ranking",
+  "profile",
   "training",
   "result",
 ] as const;
@@ -18,6 +19,7 @@ export const screenLabels: Record<AppScreen, string> = {
   "crosshair-settings": "크로스헤어",
   records: "RECORDS",
   ranking: "RANKING",
+  profile: "프로필 설정",
   training: "훈련 중",
   result: "결과",
 };

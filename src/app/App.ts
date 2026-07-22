@@ -20,6 +20,7 @@ import {
 import { getSupabasePublicConfig } from "../infrastructure/SupabaseConfig";
 import { DomTrainingHud } from "../ui/DomTrainingHud";
 import { filterTrainingResults, type DifficultyFilter, type ModeFilter } from "../ui/RecordsViewModel";
+import { createProfileForm } from "../ui/ProfileForm";
 import { createSensitivityForm } from "../ui/SensitivityForm";
 import { AppRouter } from "./AppRouter";
 import type { AppScreen } from "./AppState";
@@ -411,6 +412,9 @@ export class App {
     if (screen === "sensitivity-settings") {
       this.mountSensitivityForm();
     }
+    if (screen === "profile") {
+      this.mountProfileForm();
+    }
     if (screen === "training") {
       this.mountTraining();
     }
@@ -433,6 +437,8 @@ export class App {
         return this.renderRecords();
       case "ranking":
         return this.renderRanking();
+      case "profile":
+        return this.renderProfile();
       case "training":
         return this.renderTraining();
       case "result":
@@ -477,6 +483,31 @@ export class App {
       );
     }
     return '<span class="account-unavailable">ONLINE FEATURES<small>온라인 기능 설정 필요</small></span>';
+  }
+
+  private renderProfile(): string {
+    if (!this.account || !this.accountService) {
+      return '<section class="panel settings-panel"><h1>로그인이 필요합니다</h1><p>프로필을 설정하려면 Google 로그인을 먼저 진행해주세요.</p><button class="primary-button" data-action="sign-in-google" type="button">GOOGLE LOGIN</button></section>';
+    }
+    return (
+      '<section class="panel settings-panel profile-panel">' +
+      this.renderPanelHeading("PROFILE SETUP", "프로필 설정", "home") +
+      '<p class="profile-intro">훈련 기록과 랭킹에 표시할 닉네임과 사진을 설정해주세요.</p><div data-profile-form></div></section>'
+    );
+  }
+
+  private mountProfileForm(): void {
+    const target = this.root.querySelector<HTMLElement>("[data-profile-form]");
+    if (!target || !this.account || !this.accountService) {
+      return;
+    }
+    const form = createProfileForm(this.account, async (input) => {
+      const account = await this.accountService!.saveProfile(input);
+      this.account = account;
+      this.accountMessage = null;
+      this.router.navigate("home");
+    });
+    target.replaceChildren(form);
   }
 
   private renderHome(): string {
@@ -954,6 +985,9 @@ export class App {
       this.remoteResults = [];
       this.accountMessage = null;
     }
+    if (this.routeIncompleteProfile()) {
+      return;
+    }
     this.renderAfterAccountChange();
   }
 
@@ -971,7 +1005,22 @@ export class App {
     } catch {
       this.accountMessage = "Google 로그인 정보를 동기화하지 못했습니다.";
     }
+    if (this.routeIncompleteProfile()) {
+      return;
+    }
     this.renderAfterAccountChange();
+  }
+
+  private routeIncompleteProfile(): boolean {
+    if (
+      this.account &&
+      !this.account.profileCompleted &&
+      this.router.getCurrent() !== "profile"
+    ) {
+      this.router.navigate("profile");
+      return true;
+    }
+    return false;
   }
 
   private async startGoogleSignIn(): Promise<void> {

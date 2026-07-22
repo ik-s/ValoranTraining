@@ -123,6 +123,23 @@ describe("App flows", () => {
     });
   });
 
+  it("opens profile setup after restoring an incomplete account", async () => {
+    const { root } = mountApp({
+      getCurrentAccount: vi.fn().mockResolvedValue({
+        id: "account-id",
+        displayName: "훈련생-ABC123",
+        avatarUrl: null,
+        profileCompleted: false,
+      }),
+      getOwnRuns: vi.fn().mockResolvedValue([]),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+    } as unknown as SupabaseAccountService);
+
+    await vi.waitFor(() => {
+      expect(root.querySelector("[data-profile-form]")).not.toBeNull();
+    });
+  });
+
   it("uploads unsynced local results after a Google session is restored", async () => {
     const saved: GridShotResult = {
       id: "1cfe71c4-d538-4fb4-9d1a-88a1b1e8b2a1",
