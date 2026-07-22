@@ -284,4 +284,3 @@ git push origin main
 ~~~
 
 Deploy the current \`main\` source to the existing public Sites project, then verify Google sign-in, first-login redirect, profile save, avatar menu, and logout in the deployed application.
-
