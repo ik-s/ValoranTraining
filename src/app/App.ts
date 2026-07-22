@@ -256,11 +256,11 @@ export class App {
 
   private renderPanelHeading(eyebrow: string, title: string): string {
     return (
-      '<div class="panel-heading"><div><p class="eyebrow">' +
+      '<div class="panel-heading"><button class="panel-back" data-action="back" type="button">← 이전</button><div><p class="eyebrow">' +
       eyebrow +
       "</p><h1>" +
       title +
-      '</h1></div><button class="panel-back" data-action="back" type="button">← 이전</button></div>'
+      "</h1></div></div>"
     );
   }
 
@@ -301,7 +301,7 @@ export class App {
     const selected = modeMeta.find((mode) => mode.id === this.selectedMode)!;
     const difficulties: Difficulty[] = ["easy", "normal", "hard"];
     return (
-      '<section class="panel">' +
+      '<section class="panel training-select-panel">' +
       this.renderPanelHeading("TRAINING SELECT", "훈련을 선택하세요") +
       '<div class="mode-grid">' +
       this.renderModeCards() +
@@ -322,7 +322,7 @@ export class App {
             "</button>",
         )
         .join("") +
-      '</div><button class="primary-button" data-action="open-training">60초 훈련 준비</button></div></section>'
+      '</div><button class="primary-button training-ready-button" data-action="open-training">60초 훈련 준비</button></div></section>'
     );
   }
 

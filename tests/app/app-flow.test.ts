@@ -38,11 +38,22 @@ describe("App flows", () => {
     )!.click();
 
     expect(root.querySelector(".topbar .nav-back")).toBeNull();
-    expect(root.querySelector(".panel-heading [data-action=\"back\"]")).not.toBeNull();
+    const panelHeading = root.querySelector(".panel-heading");
+    expect(panelHeading?.firstElementChild?.classList.contains("panel-back")).toBe(true);
 
     root.querySelector<HTMLAnchorElement>(".brand")!.click();
 
     expect(root.querySelector(".hero-panel")).not.toBeNull();
+  });
+
+  it("separates the training start action from difficulty controls", () => {
+    const { root } = mountApp();
+    root.querySelector<HTMLButtonElement>(
+      '[data-action="select-mode"][data-mode="micro-flick"]',
+    )!.click();
+
+    expect(root.querySelector(".training-select-panel")).not.toBeNull();
+    expect(root.querySelector(".training-ready-button")).not.toBeNull();
   });
 
   it("continues from sensitivity input to crosshair settings", () => {
