@@ -140,6 +140,33 @@ describe("App flows", () => {
     });
   });
 
+  it("shows account actions only after the avatar is clicked", async () => {
+    const { root } = mountApp({
+      getCurrentAccount: vi.fn().mockResolvedValue({
+        id: "account-id",
+        displayName: "조준왕",
+        avatarUrl: "https://images.example/avatar.png",
+        profileCompleted: true,
+      }),
+      getOwnRuns: vi.fn().mockResolvedValue([]),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+    } as unknown as SupabaseAccountService);
+
+    await vi.waitFor(() => {
+      expect(
+        root.querySelector("[data-action=toggle-account-menu]"),
+      ).not.toBeNull();
+    });
+    expect(root.textContent).not.toContain("LOG OUT");
+
+    root
+      .querySelector<HTMLButtonElement>("[data-action=toggle-account-menu]")!
+      .click();
+
+    expect(root.textContent).toContain("프로필 설정");
+    expect(root.textContent).toContain("LOG OUT");
+  });
+
   it("uploads unsynced local results after a Google session is restored", async () => {
     const saved: GridShotResult = {
       id: "1cfe71c4-d538-4fb4-9d1a-88a1b1e8b2a1",

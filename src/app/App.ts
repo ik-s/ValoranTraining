@@ -183,6 +183,7 @@ export class App {
   private readonly accountService: SupabaseAccountService | null;
   private account: AccountProfile | null = null;
   private accountMessage: string | null = null;
+  private accountMenuOpen = false;
   private remoteResults: AimTrainingResult[] = [];
   private accountUnsubscribe: (() => void) | null = null;
   private rankingMode: AimModeId = "grid-shot";
@@ -215,6 +216,7 @@ export class App {
     this.root.addEventListener("click", this.handleClick);
     this.root.addEventListener("input", this.handleInput);
     this.root.addEventListener("change", this.handleChange);
+    this.root.addEventListener("keydown", this.handleKeydown);
     this.render(this.router.getCurrent());
     void this.initializeAccount();
   }
@@ -224,6 +226,7 @@ export class App {
     this.root.removeEventListener("click", this.handleClick);
     this.root.removeEventListener("input", this.handleInput);
     this.root.removeEventListener("change", this.handleChange);
+    this.root.removeEventListener("keydown", this.handleKeydown);
     this.accountUnsubscribe?.();
     this.accountUnsubscribe = null;
     this.root.replaceChildren();
@@ -233,6 +236,9 @@ export class App {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
+    }
+    if (!target.closest(".account-control") && this.accountMenuOpen) {
+      this.accountMenuOpen = false;
     }
     const link = target.closest<HTMLAnchorElement>("a[data-screen]");
     if (link) {
@@ -249,7 +255,12 @@ export class App {
         void this.startGoogleSignIn();
         return;
       case "sign-out":
+        this.accountMenuOpen = false;
         void this.signOut();
+        return;
+      case "toggle-account-menu":
+        this.accountMenuOpen = !this.accountMenuOpen;
+        this.renderAfterAccountChange();
         return;
       case "back":
         if (button.dataset.backScreen) {
@@ -322,8 +333,17 @@ export class App {
     }
     const screen = button.dataset.screen as AppScreen | undefined;
     if (screen) {
+      this.accountMenuOpen = false;
       this.router.navigate(screen);
     }
+  };
+
+  private readonly handleKeydown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape" || !this.accountMenuOpen) {
+      return;
+    }
+    this.accountMenuOpen = false;
+    this.renderAfterAccountChange();
   };
 
   private readonly handleInput = (event: Event): void => {
@@ -467,10 +487,21 @@ export class App {
       ? '<small class="account-message">' + escapeHtml(this.accountMessage) + "</small>"
       : "";
     if (this.account) {
+      const avatar = this.account.avatarUrl
+        ? '<img src="' + escapeHtml(this.account.avatarUrl) + '" alt="" />'
+        : '<span class="account-avatar-empty" aria-hidden="true">계정</span>';
+      const menu = this.accountMenuOpen
+        ? '<div class="account-menu" role="menu"><p class="account-menu-name">' +
+          escapeHtml(this.account.displayName) +
+          '</p><button class="account-menu-button" data-screen="profile" role="menuitem" type="button">프로필 설정</button><button class="account-menu-button account-menu-button--logout" data-action="sign-out" role="menuitem" type="button">LOG OUT</button></div>'
+        : "";
       return (
-        '<div class="account-control"><span class="account-name">' +
-        escapeHtml(this.account.displayName) +
-        '</span><button class="account-button" data-action="sign-out" type="button">LOG OUT</button>' +
+        '<div class="account-control"><button class="account-avatar-button" data-action="toggle-account-menu" type="button" aria-label="계정 메뉴" aria-haspopup="menu" aria-expanded="' +
+        String(this.accountMenuOpen) +
+        '">' +
+        avatar +
+        "</button>" +
+        menu +
         message +
         "</div>"
       );

@@ -34,11 +34,20 @@
 }
 .nav-button:hover, .nav-button.is-active { color: white; background: rgba(255, 70, 85, 0.14); }
 .nav-button.is-active { box-shadow: inset 0 -2px var(--red); }
-.account-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.account-control { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .account-button { border: 1px solid var(--line); padding: 9px 11px; color: var(--cyan); background: #11171b; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.1em; cursor: pointer; }
 .account-button:hover { border-color: var(--cyan); background: #142126; }
 .account-name, .account-unavailable { color: var(--text-muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
 .account-unavailable small, .account-message { display: block; margin-top: 3px; color: #ffb585; font-size: 0.61rem; letter-spacing: 0; }
+.account-avatar-button { display: grid; width: 36px; height: 36px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 50%; padding: 0; color: var(--cyan); background: #11171b; cursor: pointer; }
+.account-avatar-button:hover, .account-avatar-button:focus-visible { border-color: var(--cyan); outline: none; box-shadow: 0 0 0 2px rgba(44, 215, 203, 0.16); }
+.account-avatar-button img { width: 100%; height: 100%; object-fit: cover; }
+.account-avatar-empty { font-size: 0.58rem; font-weight: 900; letter-spacing: 0.04em; }
+.account-menu { position: absolute; z-index: 20; top: calc(100% + 10px); right: 0; display: grid; min-width: 164px; padding: 8px; border: 1px solid var(--line); background: #11171b; box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3); }
+.account-menu-name { margin: 4px 6px 8px; color: var(--text-muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
+.account-menu-button { border: 0; padding: 10px 9px; color: #f3f6f7; background: transparent; text-align: left; font: inherit; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; cursor: pointer; }
+.account-menu-button:hover, .account-menu-button:focus-visible { color: var(--cyan); background: #142126; outline: none; }
+.account-menu-button--logout { color: var(--red); }
 .app-content { width: min(1120px, 90vw); margin: 0 auto; padding: 6vh 0 10vh; }
 .app-content > section + section { margin-top: 28px; }
 .hero-panel, .panel {
