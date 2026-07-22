@@ -42,6 +42,11 @@ begin
 end;
 $$;
 
+-- This function exists only for the auth.users trigger. It must never be
+-- callable over the public PostgREST RPC endpoint.
+revoke all on function public.create_profile_for_new_user() from public;
+revoke all on function public.create_profile_for_new_user() from anon, authenticated;
+
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.create_profile_for_new_user();
