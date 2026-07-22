@@ -4,13 +4,13 @@ import { CameraController } from "../../src/engine/CameraController";
 import { VALORANT_YAW_COEFFICIENT } from "../../src/domain/ValorantSensitivityService";
 
 describe("CameraController", () => {
-  it("applies the centralized VALORANT sensitivity formula to yaw", () => {
+  it("applies the hidden sensitivity offset exactly once to yaw", () => {
     const controller = new CameraController(0.32, 1);
 
     controller.applyMouseDelta(100, 0);
 
     expect(controller.getRotation().yaw).toBe(
-      100 * VALORANT_YAW_COEFFICIENT * 0.32,
+      100 * VALORANT_YAW_COEFFICIENT * (0.32 + 0.19),
     );
   });
 

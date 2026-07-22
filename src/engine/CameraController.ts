@@ -1,4 +1,7 @@
-import { calculateRotationDelta } from "../domain/ValorantSensitivityService";
+import {
+  calculateEffectiveTrainingSensitivity,
+  calculateRotationDelta,
+} from "../domain/ValorantSensitivityService";
 
 export interface CameraRotation {
   yaw: number;
@@ -15,9 +18,13 @@ export class CameraController {
   ) {}
 
   applyMouseDelta(movementX: number, movementY: number): void {
+    const effectiveTrainingSensitivity = calculateEffectiveTrainingSensitivity(
+      this.valorantSensitivity,
+    );
+
     this.yaw += calculateRotationDelta(
       movementX,
-      this.valorantSensitivity,
+      effectiveTrainingSensitivity,
       this.calibrationMultiplier,
     );
     this.pitch = Math.min(
@@ -27,7 +34,7 @@ export class CameraController {
         this.pitch -
           calculateRotationDelta(
             movementY,
-            this.valorantSensitivity,
+            effectiveTrainingSensitivity,
             this.calibrationMultiplier,
           ),
       ),
