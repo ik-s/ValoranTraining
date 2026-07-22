@@ -196,7 +196,11 @@ export class App {
     }
     switch (button.dataset.action) {
       case "back":
-        this.router.back();
+        if (button.dataset.backScreen) {
+          this.router.navigate(button.dataset.backScreen as AppScreen);
+        } else {
+          this.router.back();
+        }
         return;
       case "quick-start":
         this.router.navigate(
@@ -351,9 +355,15 @@ export class App {
     }
   }
 
-  private renderPanelHeading(eyebrow: string, title: string): string {
+  private renderPanelHeading(
+    eyebrow: string,
+    title: string,
+    backScreen?: AppScreen,
+  ): string {
     return (
-      '<div class="panel-heading"><button class="panel-back" data-action="back" type="button">← 이전</button><div><p class="eyebrow">' +
+      '<div class="panel-heading"><button class="panel-back" data-action="back"' +
+      (backScreen ? ' data-back-screen="' + backScreen + '"' : "") +
+      ' type="button">← 이전</button><div><p class="eyebrow">' +
       eyebrow +
       "</p><h1>" +
       title +
@@ -399,7 +409,7 @@ export class App {
     const difficulties: Difficulty[] = ["easy", "normal", "hard"];
     return (
       '<section class="panel training-select-panel">' +
-      this.renderPanelHeading("TRAINING SELECT", "훈련을 선택하세요") +
+      this.renderPanelHeading("TRAINING SELECT", "훈련을 선택하세요", "home") +
       '<div class="mode-grid">' +
       this.renderModeCards() +
       '</div><div class="selection-summary"><p>SELECTED MODE</p><h2>' +

@@ -111,6 +111,29 @@ describe("App flows", () => {
     expect(root.querySelector("[data-hud-time]")?.textContent).toBe("30");
   });
 
+  it("returns to home from training selection after ending a session", () => {
+    new StorageService(localStorage).saveSensitivity({
+      dpi: 800,
+      valorantSensitivity: 0.32,
+      edpi: 256,
+      calibrationMultiplier: 1,
+      calibratedAt: null,
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      {} as WebGLRenderingContext,
+    );
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+    vi.spyOn(TrainingEngine.prototype, "prepare").mockImplementation(() => undefined);
+    const { root } = mountApp();
+
+    root.querySelector<HTMLButtonElement>('[data-action="quick-start"]')!.click();
+    root.querySelector<HTMLButtonElement>('[data-action="open-training"]')!.click();
+    root.querySelector<HTMLButtonElement>('[data-action="end-session"]')!.click();
+    root.querySelector<HTMLButtonElement>('[data-action="back"]')!.click();
+
+    expect(root.querySelector(".hero-panel")).not.toBeNull();
+  });
+
   it("continues from sensitivity input to crosshair settings", () => {
     const { root } = mountApp();
     root.querySelector<HTMLButtonElement>(
