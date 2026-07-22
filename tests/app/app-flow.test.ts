@@ -31,6 +31,20 @@ describe("App flows", () => {
     );
   });
 
+  it("keeps back navigation inside the active panel and sends the brand home", () => {
+    const { root } = mountApp();
+    root.querySelector<HTMLButtonElement>(
+      '[data-screen="sensitivity-settings"]',
+    )!.click();
+
+    expect(root.querySelector(".topbar .nav-back")).toBeNull();
+    expect(root.querySelector(".panel-heading [data-action=\"back\"]")).not.toBeNull();
+
+    root.querySelector<HTMLAnchorElement>(".brand")!.click();
+
+    expect(root.querySelector(".hero-panel")).not.toBeNull();
+  });
+
   it("continues from sensitivity input to crosshair settings", () => {
     const { root } = mountApp();
     root.querySelector<HTMLButtonElement>(

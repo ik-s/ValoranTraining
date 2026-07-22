@@ -91,6 +91,12 @@ export class App {
     if (!(target instanceof Element)) {
       return;
     }
+    const link = target.closest<HTMLAnchorElement>("a[data-screen]");
+    if (link) {
+      event.preventDefault();
+      this.router.navigate(link.dataset.screen as AppScreen);
+      return;
+    }
     const button = target.closest<HTMLButtonElement>("button");
     if (!button) {
       return;
@@ -208,14 +214,9 @@ export class App {
           "</button>",
       )
       .join("");
-    const backNavigation =
-      screen === "home"
-        ? ""
-        : '<button class="nav-back" data-action="back" type="button">← BACK</button>';
     this.root.innerHTML =
       '<div class="app-shell"><header class="topbar">' +
-      '<a class="brand" href="#home" aria-label="Valoran Training home">VALORAN <span>TRAINING</span></a>' +
-      backNavigation +
+      '<a class="brand" href="#home" data-screen="home" aria-label="Valoran Training home">VALORAN <span>TRAINING</span></a>' +
       '<nav aria-label="주요 메뉴">' +
       navigation +
       "</nav></header>" +
@@ -251,6 +252,16 @@ export class App {
       case "result":
         return this.renderResult();
     }
+  }
+
+  private renderPanelHeading(eyebrow: string, title: string): string {
+    return (
+      '<div class="panel-heading"><div><p class="eyebrow">' +
+      eyebrow +
+      "</p><h1>" +
+      title +
+      '</h1></div><button class="panel-back" data-action="back" type="button">← 이전</button></div>'
+    );
   }
 
   private renderHome(): string {
@@ -290,7 +301,9 @@ export class App {
     const selected = modeMeta.find((mode) => mode.id === this.selectedMode)!;
     const difficulties: Difficulty[] = ["easy", "normal", "hard"];
     return (
-      '<section class="panel"><p class="eyebrow">TRAINING SELECT</p><h1>훈련을 선택하세요</h1><div class="mode-grid">' +
+      '<section class="panel">' +
+      this.renderPanelHeading("TRAINING SELECT", "훈련을 선택하세요") +
+      '<div class="mode-grid">' +
       this.renderModeCards() +
       '</div><div class="selection-summary"><p>SELECTED MODE</p><h2>' +
       selected.name +
@@ -315,14 +328,18 @@ export class App {
 
   private renderSensitivitySettings(): string {
     return (
-      '<section class="panel settings-panel"><p class="eyebrow">STEP 01 / 03</p><h1>감도 설정</h1><p>브라우저는 마우스 DPI를 자동으로 알 수 없습니다. 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 입력한 eDPI가 훈련에 그대로 적용됩니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
+      '<section class="panel settings-panel">' +
+      this.renderPanelHeading("STEP 01 / 03", "감도 설정") +
+      '<p>브라우저는 마우스 DPI를 자동으로 알 수 없습니다. 실제 하드웨어 DPI와 VALORANT 인게임 감도를 입력해주세요. 입력한 eDPI가 훈련에 그대로 적용됩니다.</p><div data-sensitivity-form></div><div class="settings-links"><button class="secondary-button" data-screen="crosshair-settings">크로스헤어 설정</button></div></section>'
     );
   }
 
   private renderCrosshairSettings(): string {
     const crosshair = this.data.crosshair;
     return (
-      '<section class="panel"><p class="eyebrow">STEP 02 / 03 · CROSSHAIR</p><h1>크로스헤어 설정</h1><div class="crosshair-layout"><div class="crosshair-preview">' +
+      '<section class="panel">' +
+      this.renderPanelHeading("STEP 02 / 03 · CROSSHAIR", "크로스헤어 설정") +
+      '<div class="crosshair-layout"><div class="crosshair-preview">' +
       renderCrosshairReticle(crosshair, "crosshair-reticle--preview", "data-crosshair-preview") +
       '</div><div class="settings-form"><label>COLOR<input data-crosshair="color" type="color" value="' +
       crosshair.color +
@@ -385,7 +402,9 @@ export class App {
             )
             .join("");
     return (
-      '<section class="panel"><p class="eyebrow">LOCAL PERFORMANCE LOG</p><h1>기록</h1><div class="filter-row"><label>MODE<select name="mode-filter"><option value="all">ALL</option>' +
+      '<section class="panel">' +
+      this.renderPanelHeading("LOCAL PERFORMANCE LOG", "기록") +
+      '<div class="filter-row"><label>MODE<select name="mode-filter"><option value="all">ALL</option>' +
       modeMeta
         .map(
           (mode) =>
@@ -445,9 +464,9 @@ export class App {
       )
       .join("");
     return (
-      '<section class="panel result-panel"><p class="eyebrow">60 SECONDS COMPLETE</p><h1>' +
-      result.modeId.toUpperCase() +
-      '</h1><output class="result-score">' +
+      '<section class="panel result-panel">' +
+      this.renderPanelHeading("60 SECONDS COMPLETE", result.modeId.toUpperCase()) +
+      '<output class="result-score">' +
       result.score +
       '</output><p>' +
       result.difficulty.toUpperCase() +

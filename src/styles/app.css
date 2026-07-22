@@ -54,6 +54,12 @@
 .hero-panel h1 span { color: var(--red); }
 .hero-panel > p:not(.eyebrow) { position: relative; max-width: 540px; color: var(--text-muted); line-height: 1.7; }
 .panel { padding: clamp(24px, 4vw, 48px); }
+.panel-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; margin-bottom: 18px; }
+.panel-heading > div { min-width: 0; }
+.panel-heading .eyebrow { margin: 0 0 10px; }
+.panel-heading h1 { margin: 0; }
+.panel-back { flex: 0 0 auto; margin-top: 2px; border: 1px solid var(--line); padding: 9px 12px; color: var(--text-muted); background: #151c21; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; cursor: pointer; }
+.panel-back:hover { border-color: var(--cyan); color: var(--cyan); }
 .section-heading { margin: 10px 0 18px; }
 .section-heading h2 { margin: 0; font-size: 1.55rem; }
 .button-row, .settings-links, .difficulty-row { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
@@ -116,8 +122,6 @@
 .crosshair-reticle b { translate: -50% var(--crosshair-center-gap); }
 .crosshair-reticle em { position: absolute; display: var(--crosshair-dot-display); inset: 50% auto auto 50%; width: var(--crosshair-dot-size); height: var(--crosshair-dot-size); border-radius: 50%; translate: -50% -50%; background: var(--crosshair-color); box-shadow: 0 0 8px var(--crosshair-color); }
 .crosshair-reticle--preview { transform: scale(4); }
-.nav-back { margin-left: 18px; padding: 6px 8px; color: var(--text-muted); border: 0; background: transparent; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; }
-.nav-back:hover { color: var(--cyan); }
 .filter-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 20px 0; }
 .filter-row label { width: min(100%, 220px); }
 .record-list { display: grid; gap: 4px; }
