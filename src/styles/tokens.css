@@ -1,0 +1,21 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
+  background: #0c0e10;
+  color: #f3f6f7;
+  --surface: #12161a;
+  --surface-raised: #1a2025;
+  --line: #344049;
+  --text-muted: #9ba9af;
+  --red: #ff4655;
+  --cyan: #40e0d0;
+  --focus: #e9fdfb;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input, select { font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}

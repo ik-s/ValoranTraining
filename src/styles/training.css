@@ -1,0 +1,6 @@
+.training-crosshair {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  pointer-events: none;
+  translate: -50% -50%;
+}
