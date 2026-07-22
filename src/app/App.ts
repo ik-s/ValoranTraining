@@ -443,7 +443,7 @@ export class App {
       this.selectedDifficulty.toUpperCase() +
       '</span><span data-hud-input>MOUSE LOCK READY</span></div><div class="arena" data-training-arena></div><div class="training-hud" data-training-hud><div class="training-crosshair">' +
       renderCrosshairReticle(this.data.crosshair, "crosshair-reticle--training", "data-training-crosshair") +
-      '</div><div class="hud-time" data-hud-time>60</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls"><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help">MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
+      '</div><div class="hud-time" data-hud-time>60</div><div class="hud-score"><small>SCORE</small><strong data-hud-score>0</strong></div><div class="hud-meta"><span>ACC <b data-hud-accuracy>0%</b></span><span>COMBO <b data-hud-combo>0</b></span></div><div class="countdown" data-hud-countdown></div><p class="performance-warning is-hidden" data-hud-performance>PERFORMANCE BELOW 50 FPS · 그래픽 설정을 낮추거나 다른 탭을 닫아주세요.</p></div><div class="training-controls" data-training-controls><button class="primary-button" data-action="start-session">클릭하여 시작</button><button class="secondary-button" data-action="resume-session">재개</button><button class="text-button" data-action="end-session">훈련 종료</button></div><p class="training-help" data-training-help>MOUSE 시야 이동 · LMB 사격 · ESC 일시정지</p></section>'
     );
   }
 
@@ -515,6 +515,7 @@ export class App {
     }
     const hud = new DomTrainingHud(hudRoot);
     this.engine = new TrainingEngine(arena, hud, {
+      onStatusChange: () => this.syncTrainingOverlay(),
       onComplete: (metrics, pointerLockMode) => {
         const result = buildAimTrainingResult(
           {
@@ -539,6 +540,17 @@ export class App {
       sensitivity: this.data.sensitivity,
       crosshair: this.data.crosshair,
     });
+  }
+
+  private syncTrainingOverlay(): void {
+    const status = this.engine?.getStatus();
+    const isTrainingActive = status === "countdown" || status === "running";
+    this.root
+      .querySelector<HTMLElement>("[data-training-controls]")
+      ?.classList.toggle("is-hidden", isTrainingActive);
+    this.root
+      .querySelector<HTMLElement>("[data-training-help]")
+      ?.classList.toggle("is-hidden", isTrainingActive);
   }
 
   private reportStorageWrite(success: boolean): boolean {
