@@ -31,6 +31,8 @@ export interface LeaderboardEntry {
   completedAt: string;
 }
 
+const browserClients = new Map<string, SupabaseClient>();
+
 const fallbackDisplayName = (user: User): string =>
   "훈련생-" + user.id.replaceAll("-", "").slice(0, 6).toUpperCase();
 
@@ -70,7 +72,13 @@ export class SupabaseAccountService {
   constructor(private readonly client: SupabaseClient) {}
 
   static fromPublicConfig(config: SupabasePublicConfig): SupabaseAccountService {
-    return new SupabaseAccountService(createClient(config.url, config.publishableKey));
+    const clientKey = config.url + "\u0000" + config.publishableKey;
+    let client = browserClients.get(clientKey);
+    if (!client) {
+      client = createClient(config.url, config.publishableKey);
+      browserClients.set(clientKey, client);
+    }
+    return new SupabaseAccountService(client);
   }
 
   async signInWithGoogle(redirectTo: string): Promise<void> {
@@ -91,11 +99,14 @@ export class SupabaseAccountService {
   }
 
   async getCurrentAccount(): Promise<AccountProfile | null> {
-    const { data, error } = await this.client.auth.getUser();
+    // getUser() treats the expected signed-out state as an AuthSessionMissing
+    // error in some browser contexts. Reading the local session first keeps a
+    // fresh visitor signed out without showing a misleading failure message.
+    const { data, error } = await this.client.auth.getSession();
     if (error) {
       throw asError(error, "로그인 정보를 확인하지 못했습니다.");
     }
-    const user = data.user;
+    const user = data.session?.user;
     return user ? this.getProfile(user) : null;
   }
 
