@@ -10,7 +10,9 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
-    "three": "^0.185.1"
+    "@supabase/supabase-js": "^2.110.8",
+    "three": "^0.185.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

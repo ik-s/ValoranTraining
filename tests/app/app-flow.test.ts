@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../../src/app/App";
+import type { SupabaseAccountService } from "../../src/infrastructure/SupabaseAccountService";
+import type { GridShotResult } from "../../src/domain/Results";
 import { StorageService } from "../../src/domain/StorageService";
 import { TrainingEngine } from "../../src/engine/TrainingEngine";
 
-const mountApp = (): { app: App; root: HTMLDivElement } => {
+const mountApp = (
+  accountService?: SupabaseAccountService | null,
+): { app: App; root: HTMLDivElement } => {
   const root = document.createElement("div");
   document.body.append(root);
-  const app = new App(root);
+  const app = new App(root, { accountService });
   app.mount();
   return { app, root };
 };
@@ -30,6 +34,164 @@ describe("App flows", () => {
     expect(root.querySelector(".selection-summary h2")?.textContent).toBe(
       "MICRO FLICK",
     );
+  });
+
+  it("makes the whole selected mode card an accessible, visibly selected control", () => {
+    const { root } = mountApp();
+    const card = root.querySelector<HTMLButtonElement>(
+      'button.mode-card[data-action="select-mode"][data-mode="micro-flick"]',
+    );
+
+    expect(card).not.toBeNull();
+    expect(card?.getAttribute("aria-pressed")).toBe("false");
+
+    card!.click();
+
+    const selectedCards = root.querySelectorAll<HTMLButtonElement>(
+      "button.mode-card.is-selected",
+    );
+    expect(selectedCards).toHaveLength(1);
+    expect(selectedCards[0]?.dataset.mode).toBe("micro-flick");
+    expect(selectedCards[0]?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("opens an exact saved record in the existing result detail view", () => {
+    const saved: GridShotResult = {
+      id: "saved-grid-shot",
+      resultType: "aim",
+      modeId: "grid-shot",
+      difficulty: "normal",
+      playedAt: "2026-07-23T01:02:03.000Z",
+      durationSeconds: 60,
+      score: 12345,
+      accuracy: 0.91,
+      hits: 42,
+      misses: 4,
+      maxCombo: 18,
+      sensitivitySnapshot: {
+        dpi: 800,
+        valorantSensitivity: 0.32,
+        edpi: 256,
+        calibrationMultiplier: 1,
+      },
+      inputSnapshot: { pointerLockMode: "raw" },
+      directionalMetrics: [],
+      modeMetrics: { hitsPerSecond: 0.7, averageTransitionTime: 0.4 },
+    };
+    new StorageService(localStorage).record(saved);
+    const { root } = mountApp();
+
+    root.querySelector<HTMLButtonElement>('[data-screen="records"]')!.click();
+    const record = root.querySelector<HTMLButtonElement>(
+      '[data-action="show-record"][data-record-id="saved-grid-shot"]',
+    );
+    expect(record?.tagName).toBe("BUTTON");
+
+    record!.click();
+
+    expect(root.querySelector(".result-score")?.textContent).toBe("12,345");
+    expect(root.textContent).toContain("91%");
+    expect(root.textContent).toContain("18");
+
+    root.querySelector<HTMLButtonElement>('[data-action="back"]')!.click();
+    expect(root.querySelector(".records-subheading")?.textContent).toBe("PERSONAL BEST");
+  });
+
+  it("starts Google login from the top bar without blocking guest training", () => {
+    const signInWithGoogle = vi.fn().mockResolvedValue(undefined);
+    const { root } = mountApp({
+      getCurrentAccount: vi.fn().mockResolvedValue(null),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+      signInWithGoogle,
+    } as unknown as SupabaseAccountService);
+
+    root.querySelector<HTMLButtonElement>('[data-action="sign-in-google"]')!.click();
+
+    expect(signInWithGoogle).toHaveBeenCalledWith(window.location.origin + "/");
+    expect(root.querySelector(".hero-panel")).not.toBeNull();
+  });
+
+  it("uploads unsynced local results after a Google session is restored", async () => {
+    const saved: GridShotResult = {
+      id: "1cfe71c4-d538-4fb4-9d1a-88a1b1e8b2a1",
+      resultType: "aim",
+      modeId: "grid-shot",
+      difficulty: "normal",
+      playedAt: "2026-07-23T01:02:03.000Z",
+      durationSeconds: 60,
+      score: 999,
+      accuracy: 0.8,
+      hits: 9,
+      misses: 2,
+      maxCombo: 5,
+      sensitivitySnapshot: {
+        dpi: 800,
+        valorantSensitivity: 0.32,
+        edpi: 256,
+        calibrationMultiplier: 1,
+      },
+      inputSnapshot: { pointerLockMode: "raw" },
+      directionalMetrics: [],
+      modeMetrics: { hitsPerSecond: 0.15, averageTransitionTime: 0.5 },
+    };
+    new StorageService(localStorage).record(saved);
+    const saveRun = vi.fn().mockResolvedValue(undefined);
+    mountApp({
+      getCurrentAccount: vi
+        .fn()
+        .mockResolvedValue({ id: "account-id", displayName: "훈련생-ABC123" }),
+      getOwnRuns: vi.fn().mockResolvedValue([]),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+      saveRun,
+    } as unknown as SupabaseAccountService);
+
+    await vi.waitFor(() => {
+      expect(saveRun).toHaveBeenCalledWith(saved);
+    });
+  });
+
+  it("renders a filtered public ranking from the account service", async () => {
+    const getLeaderboard = vi.fn().mockResolvedValue([
+      {
+        rank: 1,
+        displayName: "훈련생-AB12CD",
+        score: 24680,
+        accuracy: 0.91,
+        completedAt: "2026-07-23T00:00:00.000Z",
+      },
+    ]);
+    const { root } = mountApp({
+      getCurrentAccount: vi.fn().mockResolvedValue(null),
+      observeAuthChanges: vi.fn().mockReturnValue(() => undefined),
+      getLeaderboard,
+    } as unknown as SupabaseAccountService);
+
+    root.querySelector<HTMLButtonElement>('[data-screen="ranking"]')!.click();
+
+    await vi.waitFor(() => {
+      expect(getLeaderboard).toHaveBeenCalledWith({
+        modeId: "grid-shot",
+        difficulty: "normal",
+        durationSeconds: 60,
+      });
+    });
+    expect(root.textContent).toContain("훈련생-AB12CD");
+    expect(root.textContent).toContain("24,680");
+    expect(root.textContent).toContain("91%");
+
+    const duration = root.querySelector<HTMLSelectElement>(
+      '[name="ranking-duration"]',
+    )!;
+    duration.value = "30";
+    duration.dispatchEvent(new Event("change", { bubbles: true }));
+
+    await vi.waitFor(() => {
+      expect(getLeaderboard).toHaveBeenLastCalledWith({
+        modeId: "grid-shot",
+        difficulty: "normal",
+        durationSeconds: 30,
+      });
+    });
   });
 
   it("keeps back navigation inside the active panel and sends the brand home", () => {

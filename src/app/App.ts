@@ -5,11 +5,19 @@ import {
   crosshairStyleAttribute,
 } from "../domain/Crosshair";
 import {
+  modeDifficultyKey,
   StorageService,
   type StoredAppData,
 } from "../domain/StorageService";
 import type { AimModeId, CrosshairSettings, Difficulty } from "../domain/types";
 import { TrainingEngine } from "../engine/TrainingEngine";
+import type { User } from "@supabase/supabase-js";
+import {
+  SupabaseAccountService,
+  type AccountProfile,
+  type LeaderboardEntry,
+} from "../infrastructure/SupabaseAccountService";
+import { getSupabasePublicConfig } from "../infrastructure/SupabaseConfig";
 import { DomTrainingHud } from "../ui/DomTrainingHud";
 import { filterTrainingResults, type DifficultyFilter, type ModeFilter } from "../ui/RecordsViewModel";
 import { createSensitivityForm } from "../ui/SensitivityForm";
@@ -35,6 +43,7 @@ const modeMeta: ModeMeta[] = [
 const navItems: Array<{ screen: AppScreen; label: string }> = [
   { screen: "home", label: "TRAINING" },
   { screen: "records", label: "RECORDS" },
+  { screen: "ranking", label: "RANKING" },
   { screen: "sensitivity-settings", label: "SETTINGS" },
 ];
 
@@ -133,6 +142,14 @@ const formatResultMetric = (value: number, format: ResultMetricFormat): string =
   }
 };
 
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
 const renderCrosshairReticle = (
   crosshair: CrosshairSettings,
   className: string,
@@ -146,6 +163,10 @@ const renderCrosshairReticle = (
   crosshairStyleAttribute(crosshair) +
   '" aria-hidden="true"><i></i><b></b><em></em></div>';
 
+export interface AppDependencies {
+  accountService?: SupabaseAccountService | null;
+}
+
 export class App {
   private readonly storage: StorageService;
   private readonly router: AppRouter;
@@ -158,12 +179,34 @@ export class App {
   private modeFilter: ModeFilter = "all";
   private difficultyFilter: DifficultyFilter = "all";
   private storageWarning: string | null = null;
+  private readonly accountService: SupabaseAccountService | null;
+  private account: AccountProfile | null = null;
+  private accountMessage: string | null = null;
+  private remoteResults: AimTrainingResult[] = [];
+  private accountUnsubscribe: (() => void) | null = null;
+  private rankingMode: AimModeId = "grid-shot";
+  private rankingDifficulty: Difficulty = "normal";
+  private rankingDuration: TrainingDuration = 60;
+  private rankingEntries: LeaderboardEntry[] = [];
+  private rankingStatus: "idle" | "loading" | "ready" | "error" | "unavailable" = "idle";
+  private rankingRequestKey: string | null = null;
+  private rankingMessage: string | null = null;
 
-  constructor(private readonly root: HTMLElement) {
+  constructor(
+    private readonly root: HTMLElement,
+    dependencies: AppDependencies = {},
+  ) {
     this.storage = new StorageService(window.localStorage);
     this.data = this.storage.load();
     this.selectedMode = this.data.lastSelection?.modeId ?? "grid-shot";
     this.selectedDifficulty = this.data.lastSelection?.difficulty ?? "normal";
+    const config = getSupabasePublicConfig();
+    this.accountService =
+      dependencies.accountService === undefined
+        ? config
+          ? SupabaseAccountService.fromPublicConfig(config)
+          : null
+        : dependencies.accountService;
     this.router = new AppRouter((screen) => this.render(screen));
   }
 
@@ -172,6 +215,7 @@ export class App {
     this.root.addEventListener("input", this.handleInput);
     this.root.addEventListener("change", this.handleChange);
     this.render(this.router.getCurrent());
+    void this.initializeAccount();
   }
 
   dispose(): void {
@@ -179,6 +223,8 @@ export class App {
     this.root.removeEventListener("click", this.handleClick);
     this.root.removeEventListener("input", this.handleInput);
     this.root.removeEventListener("change", this.handleChange);
+    this.accountUnsubscribe?.();
+    this.accountUnsubscribe = null;
     this.root.replaceChildren();
   }
 
@@ -198,6 +244,12 @@ export class App {
       return;
     }
     switch (button.dataset.action) {
+      case "sign-in-google":
+        void this.startGoogleSignIn();
+        return;
+      case "sign-out":
+        void this.signOut();
+        return;
       case "back":
         if (button.dataset.backScreen) {
           this.router.navigate(button.dataset.backScreen as AppScreen);
@@ -214,6 +266,16 @@ export class App {
         this.selectedMode = button.dataset.mode as AimModeId;
         this.router.navigate("training-select");
         return;
+      case "show-record": {
+        const recordId = button.dataset.recordId;
+        const record = this.getAllResults().find((result) => result.id === recordId);
+        if (!record) {
+          return;
+        }
+        this.currentResult = record;
+        this.router.navigate("result");
+        return;
+      }
       case "select-difficulty":
         this.selectedDifficulty = button.dataset.difficulty as Difficulty;
         this.render("training-select");
@@ -299,6 +361,18 @@ export class App {
       this.difficultyFilter = select.value as DifficultyFilter;
       this.render("records");
     }
+    if (select.name === "ranking-mode") {
+      this.rankingMode = select.value as AimModeId;
+      this.resetLeaderboard();
+    }
+    if (select.name === "ranking-difficulty") {
+      this.rankingDifficulty = select.value as Difficulty;
+      this.resetLeaderboard();
+    }
+    if (select.name === "ranking-duration") {
+      this.rankingDuration = Number(select.value) as TrainingDuration;
+      this.resetLeaderboard();
+    }
   };
 
   private render(screen: AppScreen): void {
@@ -318,12 +392,15 @@ export class App {
           "</button>",
       )
       .join("");
+    const accountControl = this.renderAccountControl();
     this.root.innerHTML =
       '<div class="app-shell"><header class="topbar">' +
       '<a class="brand" href="#home" data-screen="home" aria-label="Valoran Training home">VALORAN <span>TRAINING</span></a>' +
-      '<nav aria-label="주요 메뉴">' +
+      '<div class="topbar-actions"><nav aria-label="주요 메뉴">' +
       navigation +
-      "</nav></header>" +
+      "</nav>" +
+      accountControl +
+      "</div></header>" +
       '<p class="storage-warning' +
       (this.storageWarning ? "" : " is-hidden") +
       '" data-storage-warning role="alert">' +
@@ -336,6 +413,9 @@ export class App {
     }
     if (screen === "training") {
       this.mountTraining();
+    }
+    if (screen === "ranking") {
+      void this.loadLeaderboard();
     }
   }
 
@@ -351,6 +431,8 @@ export class App {
         return this.renderCrosshairSettings();
       case "records":
         return this.renderRecords();
+      case "ranking":
+        return this.renderRanking();
       case "training":
         return this.renderTraining();
       case "result":
@@ -374,6 +456,29 @@ export class App {
     );
   }
 
+  private renderAccountControl(): string {
+    const message = this.accountMessage
+      ? '<small class="account-message">' + escapeHtml(this.accountMessage) + "</small>"
+      : "";
+    if (this.account) {
+      return (
+        '<div class="account-control"><span class="account-name">' +
+        escapeHtml(this.account.displayName) +
+        '</span><button class="account-button" data-action="sign-out" type="button">LOG OUT</button>' +
+        message +
+        "</div>"
+      );
+    }
+    if (this.accountService) {
+      return (
+        '<div class="account-control"><button class="account-button" data-action="sign-in-google" type="button">GOOGLE LOGIN</button>' +
+        message +
+        "</div>"
+      );
+    }
+    return '<span class="account-unavailable">ONLINE FEATURES<small>온라인 기능 설정 필요</small></span>';
+  }
+
   private renderHome(): string {
     const sensitivity = this.data.sensitivity;
     const sensitivityCard = sensitivity
@@ -393,16 +498,24 @@ export class App {
   private renderModeCards(): string {
     return modeMeta
       .map(
-        (mode) =>
-          '<article class="mode-card"><span class="mode-tag">' +
+        (mode) => {
+          const isSelected = mode.id === this.selectedMode;
+          return (
+          '<button class="mode-card ' +
+          (isSelected ? "is-selected" : "") +
+          '" data-action="select-mode" data-mode="' +
+          mode.id +
+          '" type="button" aria-pressed="' +
+          (isSelected ? "true" : "false") +
+          '"><span class="mode-tag">' +
           mode.tag +
           "</span><h3>" +
           mode.name +
           "</h3><p>" +
           mode.description +
-          '</p><button class="text-button" data-action="select-mode" data-mode="' +
-          mode.id +
-          '" data-screen="training-select">선택하기 →</button></article>',
+          '</p><span class="mode-card-action">선택하기 →</span></button>'
+          );
+        },
       )
       .join("");
   }
@@ -485,14 +598,10 @@ export class App {
   }
 
   private renderRecords(): string {
-    const all = Object.values(this.data.records.aim.recent)
-      .flat()
-      .sort((first, second) => second.playedAt.localeCompare(first.playedAt));
+    const all = this.getAllResults();
     const results = filterTrainingResults(all, this.modeFilter, this.difficultyFilter);
     const personalBests = filterTrainingResults(
-      Object.values(this.data.records.aim.personalBests).filter(
-        (result): result is AimTrainingResult => result !== undefined,
-      ),
+      this.getPersonalBests(all),
       this.modeFilter,
       this.difficultyFilter,
     ).sort((first, second) => second.score - first.score);
@@ -500,9 +609,11 @@ export class App {
       personalBests.length === 0
         ? '<p class="muted-copy">아직 개인 최고 기록이 없습니다.</p>'
         : personalBests
-            .map(
-              (result) =>
-                '<article class="record-row personal-best"><span>' +
+              .map(
+                (result) =>
+                '<button class="record-row record-row-button personal-best" data-action="show-record" data-record-id="' +
+                result.id +
+                '" type="button"><span>' +
                 result.modeId.toUpperCase() +
                 "</span><span>" +
                 result.difficulty.toUpperCase() +
@@ -511,16 +622,18 @@ export class App {
                 "초" +
                 "</span><strong>" +
                 result.score +
-                '</strong><span>PERSONAL BEST</span></article>',
-            )
-            .join("");
+                '</strong><span>PERSONAL BEST</span></button>',
+              )
+              .join("");
     const rows =
       results.length === 0
         ? '<div class="empty-state"><strong>NO RECORDS YET</strong><p>첫 훈련을 완료하면 결과가 여기에 저장됩니다.</p></div>'
         : results
-            .map(
-              (result) =>
-                '<article class="record-row"><span>' +
+              .map(
+                (result) =>
+                '<button class="record-row record-row-button" data-action="show-record" data-record-id="' +
+                result.id +
+                '" type="button"><span>' +
                 result.modeId.toUpperCase() +
                 "</span><span>" +
                 result.difficulty.toUpperCase() +
@@ -531,12 +644,12 @@ export class App {
                 result.score +
                 "</strong><span>" +
                 new Date(result.playedAt).toLocaleDateString("ko-KR") +
-                "</span></article>",
-            )
-            .join("");
+                "</span></button>",
+              )
+              .join("");
     return (
       '<section class="panel">' +
-      this.renderPanelHeading("LOCAL PERFORMANCE LOG", "기록") +
+      this.renderPanelHeading("PERFORMANCE LOG", "기록") +
       '<div class="filter-row"><label>MODE<select name="mode-filter"><option value="all">ALL</option>' +
       modeMeta
         .map(
@@ -560,8 +673,159 @@ export class App {
       bestRows +
       '</div><h2 class="records-subheading">RECENT SESSIONS</h2><div class="record-list">' +
       rows +
-      '</div><div class="button-row"><button class="secondary-button" data-action="clear-records">기록 삭제</button><button class="text-button" data-action="reset-data">전체 데이터 초기화</button></div></section>'
+      '</div><p class="records-sync-status">' +
+      (this.account
+        ? "Google 계정에 저장된 기록을 함께 표시합니다."
+        : "이 기기의 기록입니다. Google 로그인 후에는 온라인 기록과 랭킹을 이용할 수 있습니다.") +
+      '</p><div class="button-row"><button class="secondary-button" data-action="clear-records">기록 삭제</button><button class="text-button" data-action="reset-data">전체 데이터 초기화</button></div></section>'
     );
+  }
+
+  private getAllResults(): AimTrainingResult[] {
+    const unique = new Map<string, AimTrainingResult>();
+    for (const result of Object.values(this.data.records.aim.recent).flat()) {
+      unique.set(result.id, result);
+    }
+    for (const result of this.remoteResults) {
+      unique.set(result.id, result);
+    }
+    return [...unique.values()].sort((first, second) =>
+      second.playedAt.localeCompare(first.playedAt),
+    );
+  }
+
+  private getPersonalBests(all: AimTrainingResult[]): AimTrainingResult[] {
+    const bestByMode = new Map<string, AimTrainingResult>();
+    for (const result of all) {
+      const key = modeDifficultyKey(
+        result.modeId,
+        result.difficulty,
+        result.durationSeconds,
+      );
+      const current = bestByMode.get(key);
+      if (!current || result.score > current.score) {
+        bestByMode.set(key, result);
+      }
+    }
+    return [...bestByMode.values()];
+  }
+
+  private renderRanking(): string {
+    const entries =
+      this.rankingStatus === "ready" && this.rankingEntries.length === 0
+        ? '<div class="empty-state"><strong>NO RANKS YET</strong><p>첫 공개 기록을 기다리고 있습니다.</p></div>'
+        : this.rankingStatus === "ready"
+          ? this.rankingEntries
+              .map(
+                (entry) =>
+                  '<article class="leaderboard-row"><strong>#' +
+                  entry.rank +
+                  '</strong><span>' +
+                  escapeHtml(entry.displayName) +
+                  '</span><span>' +
+                  Math.round(entry.score).toLocaleString("ko-KR") +
+                  '</span><span>' +
+                  (entry.accuracy === null
+                    ? "—"
+                    : Math.round(entry.accuracy * 100) + "%") +
+                  '</span><time datetime="' +
+                  entry.completedAt +
+                  '">' +
+                  new Date(entry.completedAt).toLocaleDateString("ko-KR") +
+                  "</time></article>",
+              )
+              .join("")
+          : this.rankingStatus === "error"
+            ? '<div class="empty-state"><strong>RANKING UNAVAILABLE</strong><p>' +
+              escapeHtml(this.rankingMessage ?? "랭킹을 불러오지 못했습니다.") +
+              "</p></div>"
+            : this.rankingStatus === "unavailable"
+              ? '<div class="empty-state"><strong>ONLINE RANKING SETUP REQUIRED</strong><p>온라인 랭킹은 서비스 연결 후 사용할 수 있습니다.</p></div>'
+              : '<p class="muted-copy">랭킹을 불러오는 중입니다.</p>';
+    return (
+      '<section class="panel ranking-panel">' +
+      this.renderPanelHeading("GLOBAL PERFORMANCE", "랭킹", "home") +
+      '<p class="ranking-copy">모드·난이도·훈련 시간별 최고 점수입니다. 닉네임과 공개 점수만 표시됩니다.</p><div class="filter-row"><label>MODE<select name="ranking-mode">' +
+      modeMeta
+        .map(
+          (mode) =>
+            '<option value="' +
+            mode.id +
+            '"' +
+            (mode.id === this.rankingMode ? " selected" : "") +
+            ">" +
+            mode.name +
+            "</option>",
+        )
+        .join("") +
+      '</select></label><label>DIFFICULTY<select name="ranking-difficulty"><option value="easy"' +
+      (this.rankingDifficulty === "easy" ? " selected" : "") +
+      '>EASY</option><option value="normal"' +
+      (this.rankingDifficulty === "normal" ? " selected" : "") +
+      '>NORMAL</option><option value="hard"' +
+      (this.rankingDifficulty === "hard" ? " selected" : "") +
+      '>HARD</option></select></label><label>TIME<select name="ranking-duration"><option value="30"' +
+      (this.rankingDuration === 30 ? " selected" : "") +
+      '>30초</option><option value="60"' +
+      (this.rankingDuration === 60 ? " selected" : "") +
+      '>60초</option></select></label></div><div class="leaderboard-list"><div class="leaderboard-row leaderboard-row--header"><span>RANK</span><span>PLAYER</span><span>SCORE</span><span>ACC</span><span>DATE</span></div>' +
+      entries +
+      "</div></section>"
+    );
+  }
+
+  private resetLeaderboard(): void {
+    this.rankingEntries = [];
+    this.rankingStatus = "idle";
+    this.rankingMessage = null;
+    this.rankingRequestKey = null;
+    this.render("ranking");
+  }
+
+  private rankingKey(): string {
+    return (
+      this.rankingMode +
+      ":" +
+      this.rankingDifficulty +
+      ":" +
+      this.rankingDuration
+    );
+  }
+
+  private async loadLeaderboard(): Promise<void> {
+    if (!this.accountService) {
+      this.rankingStatus = "unavailable";
+      return;
+    }
+    const requestKey = this.rankingKey();
+    if (this.rankingRequestKey === requestKey && this.rankingStatus !== "idle") {
+      return;
+    }
+    this.rankingRequestKey = requestKey;
+    this.rankingStatus = "loading";
+    try {
+      const entries = await this.accountService.getLeaderboard({
+        modeId: this.rankingMode,
+        difficulty: this.rankingDifficulty,
+        durationSeconds: this.rankingDuration,
+      });
+      if (requestKey !== this.rankingKey()) {
+        return;
+      }
+      this.rankingEntries = entries;
+      this.rankingStatus = "ready";
+      this.rankingMessage = null;
+    } catch (error) {
+      if (requestKey !== this.rankingKey()) {
+        return;
+      }
+      this.rankingStatus = "error";
+      this.rankingMessage =
+        error instanceof Error ? error.message : "랭킹을 불러오지 못했습니다.";
+    }
+    if (this.router.getCurrent() === "ranking") {
+      this.render("ranking");
+    }
   }
 
   private renderTraining(): string {
@@ -644,11 +908,136 @@ export class App {
       "<small>" +
       inputName +
       '</small></span></div></div>' +
-      genericShotMetrics +
-      '<div class="metric-grid">' +
-      metrics +
-      '</div><div class="button-row"><button class="primary-button" data-action="retry">같은 설정으로 재도전</button><button class="secondary-button" data-screen="training-select">훈련 선택</button><button class="text-button" data-screen="records">기록 보기</button></div></section>'
+       genericShotMetrics +
+       '<div class="metric-grid">' +
+       metrics +
+       "</div>" +
+       this.renderResultAccountPrompt() +
+       '<div class="button-row"><button class="primary-button" data-action="retry">같은 설정으로 재도전</button><button class="secondary-button" data-screen="training-select">훈련 선택</button><button class="text-button" data-screen="records">기록 보기</button></div></section>'
     );
+  }
+
+  private renderResultAccountPrompt(): string {
+    if (this.account) {
+      return '<p class="result-account-prompt">Google 계정에 이 기록을 저장하고 있습니다.</p>';
+    }
+    if (this.accountService) {
+      return '<p class="result-account-prompt">Google 로그인으로 이 기록을 온라인에 저장하고 랭킹에 참여하세요. <button class="text-button" data-action="sign-in-google" type="button">GOOGLE LOGIN</button></p>';
+    }
+    return "";
+  }
+
+  private renderAfterAccountChange(): void {
+    const screen = this.router.getCurrent();
+    if (screen !== "training") {
+      this.render(screen);
+    }
+  }
+
+  private async initializeAccount(): Promise<void> {
+    if (!this.accountService) {
+      return;
+    }
+    try {
+      this.account = await this.accountService.getCurrentAccount();
+      this.remoteResults = this.account
+        ? await this.accountService.getOwnRuns()
+        : [];
+      await this.syncLocalRecords();
+      this.accountUnsubscribe = this.accountService.observeAuthChanges((user) => {
+        void this.syncAccount(user);
+      });
+    } catch {
+      this.accountMessage = "Google 로그인 정보를 불러오지 못했습니다.";
+    }
+    this.renderAfterAccountChange();
+  }
+
+  private async syncAccount(user: User | null): Promise<void> {
+    if (!this.accountService) {
+      return;
+    }
+    try {
+      this.account = user ? await this.accountService.getProfile(user) : null;
+      this.remoteResults = this.account
+        ? await this.accountService.getOwnRuns()
+        : [];
+      await this.syncLocalRecords();
+      this.accountMessage = null;
+    } catch {
+      this.accountMessage = "Google 로그인 정보를 동기화하지 못했습니다.";
+    }
+    this.renderAfterAccountChange();
+  }
+
+  private async startGoogleSignIn(): Promise<void> {
+    if (!this.accountService) {
+      this.accountMessage = "온라인 기능 설정이 필요합니다.";
+      this.renderAfterAccountChange();
+      return;
+    }
+    try {
+      await this.accountService.signInWithGoogle(window.location.origin + "/");
+    } catch {
+      this.accountMessage = "Google 로그인을 시작하지 못했습니다.";
+      this.renderAfterAccountChange();
+    }
+  }
+
+  private async signOut(): Promise<void> {
+    if (!this.accountService) {
+      return;
+    }
+    try {
+      await this.accountService.signOut();
+      this.account = null;
+      this.remoteResults = [];
+      this.accountMessage = null;
+    } catch {
+      this.accountMessage = "로그아웃하지 못했습니다.";
+    }
+    this.renderAfterAccountChange();
+  }
+
+  private async saveRemoteRun(result: AimTrainingResult): Promise<void> {
+    if (!this.accountService || !this.account) {
+      return;
+    }
+    try {
+      await this.accountService.saveRun(result);
+      this.remoteResults = [
+        result,
+        ...this.remoteResults.filter((existing) => existing.id !== result.id),
+      ];
+      this.accountMessage = null;
+    } catch {
+      this.accountMessage =
+        "온라인 저장에 실패했습니다. 이 기기의 기록은 유지됩니다.";
+    }
+    this.renderAfterAccountChange();
+  }
+
+  private async syncLocalRecords(): Promise<void> {
+    if (!this.accountService || !this.account) {
+      return;
+    }
+    const syncedIds = new Set(this.remoteResults.map((result) => result.id));
+    const pending = Object.values(this.data.records.aim.recent)
+      .flat()
+      .filter((result) => !syncedIds.has(result.id));
+    for (const result of pending) {
+      try {
+        await this.accountService.saveRun(result);
+        this.remoteResults = [
+          result,
+          ...this.remoteResults.filter((existing) => existing.id !== result.id),
+        ];
+      } catch {
+        this.accountMessage =
+          "일부 로컬 기록을 온라인에 저장하지 못했습니다. 이 기기의 기록은 유지됩니다.";
+        return;
+      }
+    }
   }
 
   private mountSensitivityForm(): void {
@@ -693,6 +1082,7 @@ export class App {
           this.data = this.storage.load();
         }
         this.router.navigate("result");
+        void this.saveRemoteRun(result);
       },
     });
     this.engine.prepare({
