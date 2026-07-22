@@ -8,11 +8,6 @@ export interface DirectionalMetric {
   averageResponseTime?: number;
 }
 
-export interface TrainingFeedback {
-  strength: string | null;
-  improvement: string | null;
-}
-
 export interface BaseTrainingResult {
   id: string;
   resultType: "aim";
@@ -36,7 +31,6 @@ export interface BaseTrainingResult {
     averageFps?: number;
   };
   directionalMetrics: DirectionalMetric[];
-  feedback: TrainingFeedback;
 }
 
 export interface GridShotResult extends BaseTrainingResult {
@@ -44,7 +38,6 @@ export interface GridShotResult extends BaseTrainingResult {
   modeMetrics: {
     hitsPerSecond: number;
     averageTransitionTime: number | null;
-    averageFlickAngle: number | null;
   };
 }
 
@@ -52,7 +45,6 @@ export interface MicroFlickResult extends BaseTrainingResult {
   modeId: "micro-flick";
   modeMetrics: {
     averageMicroAdjustmentTime: number | null;
-    averageFlickAngle: number | null;
   };
 }
 

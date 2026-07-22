@@ -1,7 +1,6 @@
 import type {
   AimTrainingResult,
   BaseTrainingResult,
-  TrainingFeedback,
 } from "./Results";
 import type { AimModeId, Difficulty, ValorantSensitivitySettings } from "./types";
 import type { PointerLockMode } from "../engine/PointerLockController";
@@ -22,7 +21,6 @@ export const buildAimTrainingResult = (
 ): AimTrainingResult => {
   const hits = asNumber(metrics.hits);
   const misses = asNumber(metrics.misses) + asNumber(metrics.emptyMisses);
-  const feedback: TrainingFeedback = { strength: null, improvement: null };
   const base: Omit<BaseTrainingResult, "modeId"> = {
     id: crypto.randomUUID(),
     resultType: "aim",
@@ -42,7 +40,6 @@ export const buildAimTrainingResult = (
     },
     inputSnapshot: { pointerLockMode },
     directionalMetrics: [],
-    feedback,
   };
 
   switch (config.modeId) {
@@ -51,9 +48,8 @@ export const buildAimTrainingResult = (
         ...base,
         modeId: "grid-shot",
         modeMetrics: {
-          hitsPerSecond: asNumber(metrics.hitsPerSecond),
+          hitsPerSecond: hits / base.durationSeconds,
           averageTransitionTime: metrics.averageTransitionTime ?? null,
-          averageFlickAngle: metrics.averageFlickAngle ?? null,
         },
       };
     case "micro-flick":
@@ -62,7 +58,6 @@ export const buildAimTrainingResult = (
         modeId: "micro-flick",
         modeMetrics: {
           averageMicroAdjustmentTime: metrics.averageMicroAdjustmentTime ?? null,
-          averageFlickAngle: metrics.averageFlickAngle ?? null,
         },
       };
     case "reaction-shot":

@@ -26,11 +26,9 @@ const makeResult = (
   },
   inputSnapshot: { pointerLockMode: "standard" },
   directionalMetrics: [],
-  feedback: { strength: null, improvement: null },
   modeMetrics: {
     hitsPerSecond: 0.13,
     averageTransitionTime: 0.45,
-    averageFlickAngle: 20,
   },
 });
 

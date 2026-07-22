@@ -28,5 +28,10 @@ describe("buildAimTrainingResult", () => {
       hits: 2,
       misses: 1,
     });
+    if (result.modeId !== "grid-shot") {
+      throw new Error("Expected a Grid Shot result.");
+    }
+    expect(result.modeMetrics.hitsPerSecond).toBeCloseTo(2 / 60);
+    expect(result.modeMetrics).not.toHaveProperty("averageFlickAngle");
   });
 });

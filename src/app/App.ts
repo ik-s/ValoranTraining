@@ -38,6 +38,62 @@ const navItems: Array<{ screen: AppScreen; label: string }> = [
   { screen: "sensitivity-settings", label: "SETTINGS" },
 ];
 
+const resultModeTranslations: Record<AimModeId, string> = {
+  "grid-shot": "격자 표적 사격",
+  "micro-flick": "미세 플릭",
+  "reaction-shot": "반응 사격",
+  "target-switching": "표적 전환",
+  "strafe-track": "이동 표적 추적",
+  "headshot-only": "헤드샷 전용",
+};
+
+const difficultyTranslations: Record<Difficulty, string> = {
+  easy: "쉬움 난이도",
+  normal: "보통 난이도",
+  hard: "어려움 난이도",
+};
+
+type ResultMetricFormat = "count" | "ratio" | "seconds" | "degrees" | "hits-per-second";
+
+interface ResultMetricMeta {
+  label: string;
+  korean: string;
+  format: ResultMetricFormat;
+}
+
+const resultMetricMeta: Record<string, ResultMetricMeta> = {
+  hitsPerSecond: { label: "HITS PER SECOND", korean: "초당 명중", format: "hits-per-second" },
+  averageTransitionTime: { label: "AVERAGE TRANSITION TIME", korean: "평균 표적 전환 시간", format: "seconds" },
+  averageMicroAdjustmentTime: { label: "AVERAGE MICRO ADJUSTMENT TIME", korean: "평균 미세 조준 시간", format: "seconds" },
+  medianReactionTime: { label: "MEDIAN REACTION TIME", korean: "반응 시간 중앙값", format: "seconds" },
+  falseStarts: { label: "FALSE STARTS", korean: "성급한 사격", format: "count" },
+  timeouts: { label: "TIMEOUTS", korean: "제한 시간 초과", format: "count" },
+  wrongTargetHits: { label: "WRONG TARGET HITS", korean: "오표적 명중", format: "count" },
+  emptyMisses: { label: "EMPTY MISSES", korean: "빗나간 사격", format: "count" },
+  trackingAccuracy: { label: "TRACKING ACCURACY", korean: "추적 정확도", format: "ratio" },
+  insideRatio: { label: "ON TARGET RATIO", korean: "표적 유지 비율", format: "ratio" },
+  averageAngularError: { label: "AVERAGE ANGULAR ERROR", korean: "평균 조준 오차", format: "degrees" },
+  longestContinuousTracking: { label: "LONGEST CONTINUOUS TRACKING", korean: "최장 연속 추적", format: "seconds" },
+  headHits: { label: "HEAD HITS", korean: "헤드샷 명중", format: "count" },
+  headshotRatio: { label: "HEADSHOT RATIO", korean: "헤드샷 비율", format: "ratio" },
+  bodyHits: { label: "BODY HITS", korean: "몸통 명중", format: "count" },
+};
+
+const formatResultMetric = (value: number, format: ResultMetricFormat): string => {
+  switch (format) {
+    case "ratio":
+      return Math.round(value * 100) + "%";
+    case "seconds":
+      return value.toFixed(2) + "초";
+    case "degrees":
+      return value.toFixed(1) + "°";
+    case "hits-per-second":
+      return value.toFixed(2) + "회/초";
+    case "count":
+      return String(Math.round(value));
+  }
+};
+
 const renderCrosshairReticle = (
   crosshair: CrosshairSettings,
   className: string,
@@ -454,39 +510,57 @@ export class App {
       return '<section class="panel"><h1>결과가 없습니다</h1><button class="primary-button" data-screen="training-select">훈련 선택</button></section>';
     }
     const metrics = Object.entries(result.modeMetrics)
-      .map(
-        ([key, value]) =>
+      .flatMap(([key, value]) => {
+        const meta = resultMetricMeta[key];
+        if (!meta || typeof value !== "number") {
+          return [];
+        }
+        return [
           '<div><span>' +
-          key.replace(/([A-Z])/g, " $1").toUpperCase() +
-          "</span><strong>" +
-          (typeof value === "number" ? value.toFixed(2) : "—") +
-          "</strong></div>",
-      )
+            meta.label +
+            "<small>" +
+            meta.korean +
+            "</small></span><strong>" +
+            formatResultMetric(value, meta.format) +
+            "</strong></div>",
+        ];
+      })
       .join("");
+    const modeName = resultModeTranslations[result.modeId];
+    const difficultyName = difficultyTranslations[result.difficulty];
+    const inputName =
+      result.inputSnapshot.pointerLockMode === "raw"
+        ? "원시 마우스 입력"
+        : "표준 마우스 입력";
     return (
       '<section class="panel result-panel">' +
-      this.renderPanelHeading("60 SECONDS COMPLETE", result.modeId.toUpperCase()) +
-      '<output class="result-score">' +
-      result.score +
-      '</output><p>' +
+      this.renderPanelHeading(
+        "60 SECONDS COMPLETE<small>60초 훈련 완료</small>",
+        result.modeId.toUpperCase(),
+      ) +
+      '<p class="result-mode-translation">' +
+      modeName +
+      '</p><div class="result-score-block"><span>SCORE<small>점수</small></span><output class="result-score">' +
+      Math.round(result.score).toLocaleString("ko-KR") +
+      '</output></div><div class="result-context"><div><span>' +
       result.difficulty.toUpperCase() +
-      " · " +
+      "<small>" +
+      difficultyName +
+      "</small></span></div><div><span>" +
       result.sensitivitySnapshot.edpi +
-      ' eDPI · ' +
+      ' eDPI<small>유효 감도</small></span></div><div><span>' +
       result.inputSnapshot.pointerLockMode.toUpperCase() +
-      '</p><div class="stat-grid"><div><span>HITS</span><strong>' +
+      "<small>" +
+      inputName +
+      '</small></span></div></div><div class="stat-grid stat-grid--three"><div><span>HITS<small>명중</small></span><strong>' +
       result.hits +
-      '</strong></div><div><span>ACCURACY</span><strong>' +
+      '</strong></div><div><span>ACCURACY<small>명중률</small></span><strong>' +
       (result.accuracy === null ? "—" : Math.round(result.accuracy * 100) + "%") +
-      '</strong></div><div><span>MAX COMBO</span><strong>' +
+      '</strong></div><div><span>MAX COMBO<small>최고 연속 명중</small></span><strong>' +
       result.maxCombo +
       '</strong></div></div><div class="metric-grid">' +
       metrics +
-      '</div><div class="feedback-grid"><p><b>강점</b> ' +
-      (result.feedback.strength ?? "충분한 방향 표본이 쌓이면 강점을 분석합니다.") +
-      '</p><p><b>개선</b> ' +
-      (result.feedback.improvement ?? "다음 훈련에서 방향별 표본을 늘려보세요.") +
-      '</p></div><div class="button-row"><button class="primary-button" data-action="retry">같은 설정으로 재도전</button><button class="secondary-button" data-screen="training-select">난이도 변경</button><button class="text-button" data-screen="records">기록 보기</button></div></section>'
+      '</div><div class="button-row"><button class="primary-button" data-action="retry">같은 설정으로 재도전</button><button class="secondary-button" data-screen="training-select">훈련 선택</button><button class="text-button" data-screen="records">기록 보기</button></div></section>'
     );
   }
 
